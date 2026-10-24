@@ -2,7 +2,8 @@
 
     python3 scripts/derive_inputs.py
 
--> data/hazard_days.json   real hourly 6am-10pm series per hazard level, picked from the record (see pick_levels)
+-> data/hazard_days.json   real hourly 6am-10pm series per hazard level, picked from the record (see pick_levels);
+                           smoke days are confirmed by NOAA HMS satellite smoke plumes (fetched on demand)
 -> data/inputs.json        RECS 2020 Pennsylvania AC / heating rates, CDC PLACES tract asthma+COPD, city refuge sites,
                            hot-day behavior from ATUS diaries x NOAA daily highs (run scripts/atus.py first)
 -> data/flood_zones.json   FEMA 2023 flood zones (City of Philadelphia), study area
@@ -21,11 +22,13 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fetch_osm import BBOX, DATA
-from fetch_real import GHCN_STATIONS
+from fetch_real import GHCN_STATIONS, get
 
 RAW = DATA / "raw"
 TZ = ZoneInfo("America/New_York")
 HOURS = range(6, 23)
+HMS_URL = "https://satepsanone.nesdis.noaa.gov/pub/FIRE/web/HMS/Smoke_Polygons/KML/{d:%Y}/{d:%m}/hms_smoke{d:%Y%m%d}.kml"
+CITY_HALL = (-75.1636, 39.9526)
 MID_INCOME = {1: 2500, 2: 6250, 3: 8750, 4: 11250, 5: 13750, 6: 17500, 7: 22500, 8: 27500, 9: 32500, 10: 37500,
               11: 45000, 12: 55000, 13: 67500, 14: 87500, 15: 125000, 16: 200000}  # RECS MONEYPY category midpoints
 
@@ -108,14 +111,15 @@ def pm25_aqi(c):
 
 
 def aqs_days():
-    """{local date: [AQI x 17]} from EPA AQS hourly PM2.5 2023, mean of Philadelphia County monitors, NowCast."""
+    """{local date: [AQI x 17]} from EPA AQS hourly PM2.5 2010-2025, mean of Philadelphia County monitors, NowCast."""
     by_hour = defaultdict(list)
-    with zipfile.ZipFile(RAW / "hourly_88101_2023.zip") as z, z.open("hourly_88101_2023.csv") as f:
-        for line in io.TextIOWrapper(f, "utf-8"):
-            if not line.startswith('"42","101"'):
-                continue
-            row = next(csv.reader([line]))
-            by_hour[datetime.fromisoformat(f"{row[9]}T{row[10]}")].append(float(row[13]))
+    for zpath in sorted((RAW / "aqs").glob("hourly_88101_*.zip")):
+        with zipfile.ZipFile(zpath) as z, z.open(zpath.stem + ".csv") as f:
+            for line in io.TextIOWrapper(f, "utf-8"):
+                if not line.startswith('"42","101"'):
+                    continue
+                row = next(csv.reader([line]))
+                by_hour[datetime.fromisoformat(f"{row[9]}T{row[10]}")].append(float(row[13]))
     ts = sorted(by_hour)
     conc = {t: statistics.mean(by_hour[t]) for t in ts}
     out = defaultdict(dict)
@@ -132,16 +136,45 @@ def aqs_days():
     return out
 
 
+def smoke_overhead(d):
+    """Densest NOAA HMS satellite smoke plume over City Hall on date d ("Light" / "Medium" / "Heavy"), or None."""
+    (RAW / "hms").mkdir(exist_ok=True)
+    try:
+        path = get(HMS_URL.format(d=d), RAW / "hms" / f"hms_smoke{d:%Y%m%d}.kml")
+    except RuntimeError:  # no HMS file that day
+        return None
+    x, y = CITY_HALL
+    best = None
+    for pm in re.findall(r"<Placemark>(.*?)</Placemark>", path.read_text(errors="ignore"), re.S):
+        dens = re.search(r"Density: (\w+)", pm)
+        for ring in re.findall(r"<coordinates>(.*?)</coordinates>", pm, re.S):
+            pts = [tuple(map(float, c.split(",")[:2])) for c in ring.split()]
+            inside = False
+            for (x1, y1), (x2, y2) in zip(pts, pts[1:] + pts[:1]):
+                if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+                    inside = not inside
+            if inside and dens:
+                rank = ["Light", "Medium", "Heavy"]
+                if best is None or rank.index(dens[1]) > rank.index(best):
+                    best = dens[1]
+    return best
+
+
 def pick_levels(cands, key_label):
     """cands: [(severity, date, values, extra)] for qualifying event days (higher severity = worse).
     moderate = the median event day, severe = 95th-percentile event day, extreme = worst day on record."""
     cands = sorted(cands, key=lambda c: c[0])
     n = len(cands)
-    picks = {"moderate": cands[n // 2], "severe": cands[min(n - 2, int(0.95 * (n - 1)))] if n > 2 else cands[-1],
-             "extreme": cands[-1]}
-    return {lvl: {"date": c[1].isoformat(), "values": [round(v, 2) for v in c[2]], **c[3],
-                  "rank_note": f"{['the median', 'top 5%', 'the worst'][i]} of {n} {key_label}"}
-            for i, (lvl, c) in enumerate(picks.items())}
+    idx = {"moderate": n // 2, "severe": min(n - 2, int(0.95 * (n - 1))) if n > 2 else n - 1, "extreme": n - 1}
+    def note(lvl, i):
+        if lvl == "moderate":
+            return f"the median of {n} {key_label}"
+        if lvl == "extreme":
+            return f"the worst of {n} {key_label}"
+        k = n - i
+        return f"the {k}{'th' if 10 <= k % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(k % 10, 'th')}-worst of {n} {key_label}"
+    return {lvl: {"date": cands[i][1].isoformat(), "values": [round(v, 2) for v in cands[i][2]], **cands[i][3],
+                  "rank_note": note(lvl, i)} for lvl, i in idx.items()}
 
 
 def hazard_days():
@@ -165,17 +198,21 @@ def hazard_days():
         if max(r3) >= 1.0:
             flood.append((max(r3), d, r3, {"peak": round(max(r3), 2),
                                            "total": round(sum(v.get("rain", 0) for v in day.values()), 2)}))
-    print("EPA AQS hourly PM2.5 2023 (Philadelphia County) ...")
+    print("EPA AQS hourly PM2.5 2010-2025 (Philadelphia County) + NOAA HMS smoke plumes ...")
     aqs = aqs_days()
     smoke = []
     for d, day in aqs.items():
         s = series(day, "aqi")
-        if s and max(s) >= 151:  # EPA "Unhealthy" or worse
-            smoke.append((max(s), d, s, {"peak": round(max(s))}))
+        # Unhealthy for sensitive groups or worse, in the summer-diary months, with a satellite-mapped smoke plume
+        # overhead: drops winter inversions and July 4-5 fireworks, which also push PM2.5 past AQI 100
+        if s and max(s) >= 101 and 5 <= d.month <= 9 and (d.month, d.day) not in ((7, 4), (7, 5)):
+            plume = smoke_overhead(d)
+            if plume:
+                smoke.append((max(s), d, s, {"peak": round(max(s)), "plume": plume}))
     typ = sorted(typical, key=lambda c: c[0])[len(typical) // 2]
     out = {
         "heat": pick_levels(heat, "hot days (PHL high ≥ 92°F) since 2010"),
-        "smoke": pick_levels(smoke, "smoke days in 2023 (AQI ≥ 151)"),
+        "smoke": pick_levels(smoke, "smoke days since 2010 (AQI ≥ 101 under a satellite-mapped smoke plume)"),
         "flood": pick_levels(flood, "downpours (≥ 1 in of rain in 3 h at PHL) since 2010"),
         "cold": pick_levels(cold, "Code Blue days (wind chill ≤ 20°F) since 2010"),
         "typical_summer": {"date": typ[1].isoformat(), "values": [round(v, 2) for v in typ[2]], **typ[3],

@@ -13,8 +13,8 @@ group vs. doing nothing; clicking a resident gives a live LLM explanation of why
 Working end to end — see README.md for commands. `uv run server.py` → http://localhost:8000.
 - Study area: Center City, University City, North Philly incl. Hunting Park (bbox `39.935,-75.215,40.030,-75.120`).
 - 48 precomputed runs: 4 hazards × 3 levels × 4 interventions. Each level replays a **real day** (median event day,
-  top-5% day, worst on record): NOAA hourly at PHL for heat index / wind chill / 3-h rain, EPA AQS NowCast for smoke
-  (June 2023). Refuges are the city's **real 31 cooling/warming sites** with posted hours (no more site picker).
+  95th-percentile day, worst on record): NOAA hourly at PHL for heat index / wind chill / 3-h rain, EPA AQS NowCast for
+  smoke (22 days 2010–2025 at AQI ≥ 101 under a NOAA HMS satellite smoke plume, May–Sept). Refuges are the city's **real 31 cooling/warming sites** with posted hours (no more site picker).
 - Residents: ACS 2024 tracts (age, employment by age, occupation, college, 65+ alone, poverty, cars), RECS 2020 PA
   (AC / heat by poverty), CDC PLACES 2024 release (asthma + COPD; the 2025 release has no PA values).
   FEMA 2023 flood zones and the city's Heat Exposure Index replace the river-distance / park-density proxies.

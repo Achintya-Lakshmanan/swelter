@@ -22,7 +22,8 @@
 
   const state = {
     hazard: "heat", level: "severe", iv: "none",
-    t: 6, playing: true, speed: 0.5, selected: null, group: null,
+    // speed is clock hours per real second: 1× = 15 min/s, so a 20-minute trip takes 1.3 s on screen
+    t: 6, playing: true, speed: 0.25, selected: null, group: null,
   };
   let M, roads = [], water = [], deckOverlay, map, run, baseRun, frame = 0, lastTs = 0;
   const runCache = new Map();
@@ -451,7 +452,7 @@
     const row = ([k, v]) => `<tr><td><code>${k}</code></td><td>${typeof v.value === "object" ? JSON.stringify(v.value) : v.value}</td><td>${v.source}</td></tr>`;
     const lv = Object.entries(M.hazards).map(([, h]) => `<tr><td>${h.label}</td>${Object.values(h.levels).map((l) => `<td>${l.label.split(" — ")[1]}</td>`).join("")}</tr>`).join("");
     openModal(`<h2>Methods</h2>
-      <p><b>Hazard days are real.</b> Each level replays one real day, hour by hour: the median event day, a top-5% event day and the worst day on record. Heat index and wind chill come from NOAA hourly observations at PHL (2010–2024); rain is the trailing 3-hour total at PHL; smoke is the EPA PM2.5 NowCast AQI averaged over Philadelphia County monitors (2023).</p>
+      <p><b>Hazard days are real.</b> Each level replays one real day, hour by hour: the median event day, the 95th-percentile event day and the worst day on record. Heat index and wind chill come from NOAA hourly observations at PHL (2010–2024); rain is the trailing 3-hour total at PHL; smoke is the EPA PM2.5 NowCast AQI averaged over Philadelphia County monitors (2010–2025), counting only May–September days at AQI 101 or worse with a NOAA satellite-mapped smoke plume over the city (22 days; this drops winter inversions and July 4 fireworks).</p>
       <table><tr><th></th><th>Typical</th><th>Severe</th><th>Record</th></tr>${lv}</table>
       <p><b>World.</b> ${M.places.length.toLocaleString()} real places from OpenStreetMap plus the city's ${M.refuges.length} open cooling / warming sites and their posted hours (City of Philadelphia open data). Flood zones are FEMA's 2023 map; local heat is the city's 2023 Heat Exposure Index.</p>
       <p><b>People.</b> ${M.residents.length.toLocaleString()} synthetic adults sampled from ${new Set(M.residents.map((r) => r.tract)).size} Census tracts: age, employment and occupation, college enrollment, poverty, cars and living alone come from ACS 2024 tract tables; AC and heating access from EIA RECS 2020 (Pennsylvania, by poverty); asthma / COPD from CDC PLACES tract estimates. Unhoused residents are placed in Kensington and Center City and oversampled.</p>

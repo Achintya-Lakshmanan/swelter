@@ -51,7 +51,7 @@ fallbacks enabled; override with `--model`.
 
 | What | Source |
 |---|---|
-| Hazard days | NOAA ISD hourly at PHL 2010–2024 (heat index, wind chill, 3-h rain); EPA AQS hourly PM2.5 2023 (NowCast AQI). Each level is a real day: median event, top 5%, worst on record |
+| Hazard days | NOAA ISD hourly at PHL 2010–2024 (heat index, wind chill, 3-h rain); EPA AQS hourly PM2.5 2010–2025 (NowCast AQI), smoke days confirmed by NOAA HMS satellite plumes. Each level is a real day: median event, 95th percentile, worst on record |
 | Places | OpenStreetMap (5,460 places) + City of Philadelphia cooling/warming sites with posted hours (31) |
 | Flood / heat | FEMA 2023 flood zones; City of Philadelphia Heat Exposure Index 2023 (2010 tracts where 2023 is blank) |
 | People | ACS 2024 5-yr tracts (B01001, B23001, C24010, B14001, B11007, B17001, B08201); EIA RECS 2020 PA (AC, heat by poverty); CDC PLACES 2024 release (asthma, COPD) |

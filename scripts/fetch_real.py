@@ -6,7 +6,7 @@ City of Philadelphia (ArcGIS):  FEMA floodplain 2023, Heat Exposure Index 2023, 
 CDC PLACES 2024 release (tract): adult asthma + COPD prevalence, BRFSS 2022 (the 2025 release has no PA values)
 EIA RECS 2020 microdata:        AC / heating / energy insecurity by income, Pennsylvania households
 NOAA ISD hourly, PHL airport:   temperature, dew point, wind, precipitation 2010-2024 (event-day selection)
-EPA AQS hourly PM2.5, 2023:     Philadelphia County monitors (wildfire-smoke event days)
+EPA AQS hourly PM2.5 2010-2025: Philadelphia County monitors (smoke event days)
 NOAA GHCN-Daily:                daily highs for PHL, NYC, DC, Baltimore, Boston (ATUS hot-day behavior)
 """
 import json
@@ -32,6 +32,7 @@ RECS_URL = "https://www.eia.gov/consumption/residential/data/2020/csv/recs2020_p
 ISD_URL = "https://noaa-global-hourly-pds.s3.amazonaws.com/{year}/72408013739.csv"  # NCEI redirects here
 AQS_URL = "https://aqs.epa.gov/aqsweb/airdata/hourly_88101_{year}.zip"
 ISD_YEARS = range(2010, 2025)
+AQS_YEARS = range(2010, 2026)  # 2026 is still partial
 GHCN_URL = "https://www.ncei.noaa.gov/data/global-historical-climatology-network-daily/access/{station}.csv"
 # Airport/park stations for the I-95 metros whose ATUS diaries feed the hot-day behavior estimate (scripts/atus.py METROS)
 GHCN_STATIONS = {"37980": "USW00013739", "35620": "USW00094728", "47900": "USW00013743", "12580": "USW00093721",
@@ -100,7 +101,9 @@ def main():
     for st in GHCN_STATIONS.values():
         get(GHCN_URL.format(station=st), RAW / f"{st}.csv")
     print("EPA AQS hourly PM2.5...")
-    get(AQS_URL.format(year=2023), RAW / "hourly_88101_2023.zip")
+    (RAW / "aqs").mkdir(exist_ok=True)
+    for y in AQS_YEARS:
+        get(AQS_URL.format(year=y), RAW / "aqs" / f"hourly_88101_{y}.zip")
     print("done")
 
 

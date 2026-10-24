@@ -1,10 +1,10 @@
 """Hazard definitions: real hourly days, interventions, groups, and danger thresholds.
 
 Every hazard level replays a real day from the record (scripts/derive_inputs.py -> data/hazard_days.json):
-the median event day, a top-5% event day, and the worst day on record. Heat index and wind chill come from
+the median event day, the 95th-percentile event day, and the worst day on record. Heat index and wind chill come from
 NOAA hourly observations at PHL airport (2010-2024), rainfall is the trailing 3-hour total at PHL, and smoke is the
-EPA PM2.5 NowCast AQI averaged over Philadelphia County monitors (2023). The planner decides behavior; exposure.py
-uses these series and thresholds to score it.
+EPA PM2.5 NowCast AQI averaged over Philadelphia County monitors (2010-2025, satellite-confirmed smoke days). The
+planner decides behavior; exposure.py uses these series and thresholds to score it.
 """
 import json
 from datetime import date

@@ -48,7 +48,7 @@
    ],
    "peak": 107,
    "tmax": 97,
-   "rank_note": "top 5% of 206 hot days (PHL high \u2265 92\u00b0F) since 2010"
+   "rank_note": "the 12th-worst of 206 hot days (PHL high \u2265 92\u00b0F) since 2010"
   },
   "extreme": {
    "date": "2011-07-22",
@@ -78,6 +78,31 @@
  },
  "smoke": {
   "moderate": {
+   "date": "2023-05-31",
+   "values": [
+    54.73,
+    56.78,
+    63.67,
+    77.83,
+    85.1,
+    86.96,
+    86.96,
+    89.75,
+    95.34,
+    102.97,
+    108.88,
+    112.33,
+    122.91,
+    101.25,
+    84.72,
+    76.15,
+    72.24
+   ],
+   "peak": 123,
+   "plume": "Medium",
+   "rank_note": "the median of 22 smoke days since 2010 (AQI \u2265 101 under a satellite-mapped smoke plume)"
+  },
+  "severe": {
    "date": "2023-06-06",
    "values": [
     113.56,
@@ -99,31 +124,8 @@
     225.77
    ],
    "peak": 226,
-   "rank_note": "the median of 5 smoke days in 2023 (AQI \u2265 151)"
-  },
-  "severe": {
-   "date": "2023-06-08",
-   "values": [
-    311.76,
-    282.76,
-    258.68,
-    233.9,
-    207.05,
-    186.26,
-    175.61,
-    171.4,
-    170.98,
-    172.17,
-    170.77,
-    158.85,
-    150.0,
-    138.18,
-    132.76,
-    134.73,
-    148.03
-   ],
-   "peak": 312,
-   "rank_note": "top 5% of 5 smoke days in 2023 (AQI \u2265 151)"
+   "plume": "Heavy",
+   "rank_note": "the 3rd-worst of 22 smoke days since 2010 (AQI \u2265 101 under a satellite-mapped smoke plume)"
   },
   "extreme": {
    "date": "2023-06-07",
@@ -147,7 +149,8 @@
     500
    ],
    "peak": 500,
-   "rank_note": "the worst of 5 smoke days in 2023 (AQI \u2265 151)"
+   "plume": "Heavy",
+   "rank_note": "the worst of 22 smoke days since 2010 (AQI \u2265 101 under a satellite-mapped smoke plume)"
   }
  },
  "flood": {
@@ -199,7 +202,7 @@
    ],
    "peak": 2.58,
    "total": 2.58,
-   "rank_note": "top 5% of 59 downpours (\u2265 1 in of rain in 3 h at PHL) since 2010"
+   "rank_note": "the 4th-worst of 59 downpours (\u2265 1 in of rain in 3 h at PHL) since 2010"
   },
   "extreme": {
    "date": "2013-07-28",
@@ -274,7 +277,7 @@
     8.6
    ],
    "peak": -3,
-   "rank_note": "top 5% of 440 Code Blue days (wind chill \u2264 20\u00b0F) since 2010"
+   "rank_note": "the 23rd-worst of 440 Code Blue days (wind chill \u2264 20\u00b0F) since 2010"
   },
   "extreme": {
    "date": "2014-01-07",
