@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0e13">
   <title>Swelter · Philadelphia</title>
   <link rel="stylesheet" href="vendor/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 </head>
@@ -14,18 +15,19 @@
     <div class="brand">
       <span class="logo" aria-hidden="true"></span>
       <div>
-        <div class="brand-name">Swelter</div>
+        <h1 class="brand-name">Swelter</h1>
         <div class="brand-sub">Philadelphia disaster what-if</div>
       </div>
     </div>
     <nav class="controls">
-      <div class="seg" id="hazard-seg" role="tablist" aria-label="Hazard"></div>
-      <div class="seg" id="level-seg" aria-label="Severity"></div>
-      <div class="seg" id="iv-seg" aria-label="Intervention"></div>
+      <div class="seg" id="hazard-seg" role="group" aria-label="Hazard"></div>
+      <div class="seg" id="level-seg" role="group" aria-label="Severity"></div>
+      <div class="seg" id="iv-seg" role="group" aria-label="Intervention"></div>
     </nav>
     <div class="top-actions">
       <button class="ghost" id="btn-validate">Validation</button>
       <button class="ghost" id="btn-methods">Methods</button>
+      <a class="ghost" href="about.html">About</a>
     </div>
   </header>
 
@@ -41,8 +43,11 @@
       </aside>
 
       <div class="timebar">
-        <button class="play" id="play" aria-label="Play/pause"></button>
-        <div class="clock" id="clock">6:00 AM</div>
+        <button class="play" id="play" aria-label="Pause"></button>
+        <div class="clockbox">
+          <div class="clock" id="clock">6:00 AM</div>
+          <div class="readout" id="readout"></div>
+        </div>
         <div class="time-track">
           <svg id="spark" class="spark" preserveAspectRatio="none"></svg>
           <input type="range" id="time" min="6" max="22.99" step="0.01" value="6" aria-label="Time of day">
@@ -64,14 +69,13 @@
         <h2 id="compare-title">Dangerous hours per person</h2>
         <p class="muted" id="compare-sub"></p>
       </div>
+      <p class="caution" id="compare-note" hidden></p>
       <div id="compare-bars" class="bars"></div>
       <div class="kpis" id="kpis"></div>
       <div class="section-title">Every intervention at this severity</div>
       <div id="matrix" class="matrix"></div>
       <button class="feature-btn" id="btn-feature">Show me someone whose day changed</button>
       <p class="hint">Click a group to highlight its residents on the map. Click any dot to inspect a resident.</p>
-      <div class="section-title">How this run was made</div>
-      <div id="provenance" class="provenance"></div>
       <div class="history" id="history"></div>
     </aside>
   </main>
@@ -83,6 +87,6 @@
 
   <script src="vendor/maplibre-gl.js"></script>
   <script src="vendor/deckgl.min.js"></script>
-  <script src="main.js"></script>
+  <script src="main.js?v=4"></script>
 </body>
 </html>

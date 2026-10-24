@@ -1,0 +1,282 @@
+/* Swelter showcase. One face (Schibsted Grotesk), frost-and-slate ground, teal only on the action. */
+:root {
+  --bg: #f7f9fa;
+  --surface: #ecf0f2;
+  --ink: #1f3038;
+  --muted: #5d6b72;
+  --accent: #0d7480;
+  --accent-strong: #095d67;
+  --accent-ink: #ffffff;
+  --ink-mid: rgb(31 48 56 / 0.45);
+  --ink-low: rgb(31 48 56 / 0.18);
+
+  --m: clamp(20px, 4vw, 56px);
+  --gap: clamp(16px, 2vw, 28px);
+  --section: clamp(120px, 14vw, 200px);
+
+  /* five sizes, plus the cropped wordmark */
+  --fs-display: clamp(56px, 8.8vw, 150px);
+  --fs-big: clamp(36px, 5vw, 80px);
+  --fs-head: clamp(2rem, 1.3rem + 2.4vw, 3.5rem);
+  --fs-lead: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --fs-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --t-press: 140ms;
+  --t-hover: 180ms;
+  --stagger-line: 90ms;
+  --stagger-item: 70ms;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 var(--fs-lead) / 1.45 "Schibsted Grotesk", system-ui, sans-serif; letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; overflow-x: clip;
+}
+h1, h2, p, ul, ol, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+img, video { display: block; max-width: 100%; }
+a { color: inherit; }
+b { font-weight: 600; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* ---------- navigation ---------- */
+.nav {
+  position: absolute; inset: 0 0 auto; z-index: 2; display: flex; justify-content: space-between; align-items: center;
+  padding: 20px var(--m); font: 600 var(--fs-small) / 1 "Schibsted Grotesk", sans-serif;
+}
+.mark { font-weight: 800; letter-spacing: -0.03em; text-decoration: none; font-size: var(--fs-lead); }
+.nav nav { display: flex; gap: clamp(18px, 3vw, 48px); }
+.nav nav a, .foot a, .claim-pic figcaption a {
+  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 0.25em;
+  text-decoration-thickness: 0.08em; transition: text-decoration-color var(--t-hover) ease;
+  padding: 12px 0;
+}
+@media (hover: hover) and (pointer: fine) { .nav nav a:hover, .foot a:hover { text-decoration-color: currentColor; } }
+
+/* ---------- hero: the sentence is the layout ---------- */
+.hero {
+  min-height: 100svh; display: grid; grid-template-rows: 1fr auto; gap: 48px;
+  padding: 96px var(--m) clamp(32px, 4vw, 56px);
+}
+.sentence {
+  align-self: center; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.18em;
+  font: 800 var(--fs-display) / 0.92 "Schibsted Grotesk", sans-serif; letter-spacing: -0.05em;
+}
+.sentence .line { display: block; overflow: clip; padding-bottom: 0.06em; }
+.sentence .line > span { display: inline-block; }
+.slot {
+  display: inline-block; width: 2.1em; height: 0.74em; overflow: clip; border-radius: 0.08em;
+  background: #1a1f26; align-self: baseline; transform: translateY(0.02em);
+}
+.slot video { width: 100%; height: 100%; object-fit: cover; }
+.hero-foot {
+  display: grid; grid-template-columns: repeat(12, 1fr); column-gap: var(--gap); align-items: end;
+}
+.hero-foot p { grid-column: 1 / span 6; max-width: 40ch; }
+.button {
+  grid-column: 9 / -1; justify-self: end; display: inline-flex; white-space: nowrap; align-items: center; min-height: 52px;
+  padding: 0 28px; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+  font-weight: 600; text-decoration: none;
+  transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease;
+}
+.button:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .button:hover { background: var(--accent-strong); } }
+
+/* ---------- records: object in front of type ---------- */
+.records {
+  position: relative; overflow: hidden; padding: var(--section) 0 0;
+  display: grid; grid-template-columns: repeat(12, 1fr); column-gap: var(--gap);
+}
+.stack {
+  grid-column: 1 / -1; padding-left: var(--m); white-space: nowrap;
+  font: 800 var(--fs-display) / 0.9 "Schibsted Grotesk", sans-serif; letter-spacing: -0.05em;
+}
+.stack h2, .stack p { font: inherit; }
+.stack .tone-mid { color: var(--ink-mid); }
+.stack .tone-low { color: var(--ink-low); }
+.object {
+  grid-column: 1 / span 6; margin: 72px 0 0 var(--m); transform: rotate(-3deg); border-radius: 6px; overflow: clip;
+}
+.object img { width: 100%; height: auto; }
+.facts {
+  grid-column: 8 / span 5; padding-right: var(--m); margin-top: 72px; align-self: start;
+  display: grid; gap: 28px;
+}
+.record-list { display: grid; }
+.record-list li {
+  display: grid; grid-template-columns: 4.5em 7.5em 1fr; gap: 12px; padding: 14px 0;
+  border-top: 2px solid var(--surface);
+}
+.record-list span:first-of-type { color: var(--muted); }
+
+/* ---------- claims: a statement with its evidence ---------- */
+.claim {
+  display: grid; grid-template-columns: repeat(12, 1fr); column-gap: var(--gap); row-gap: 40px; align-items: center;
+  padding: var(--section) var(--m) 0;
+}
+.claim-text { grid-column: 1 / span 5; display: grid; gap: 24px; }
+.claim-text h2 { font: 800 var(--fs-head) / 1 "Schibsted Grotesk", sans-serif; letter-spacing: -0.04em; text-wrap: balance; }
+.claim-text p { max-width: 46ch; }
+.claim-text b { color: var(--ink); }
+.claim-pic { grid-column: 7 / -1; display: grid; gap: 12px; }
+.claim-pic img { width: 100%; height: auto; border-radius: 6px; }
+.claim-pic figcaption { font-size: var(--fs-small); color: var(--muted); }
+.claim-pic.tall { grid-column: 8 / span 4; justify-self: center; max-width: 380px; }
+.claim.flip .claim-text { grid-column: 7 / -1; grid-row: 1; }
+.claim.flip .claim-pic { grid-row: 1; grid-column: 2 / span 4; }
+
+/* ---------- ledger: figures on the decimal ---------- */
+.ledger {
+  display: grid; grid-template-columns: repeat(12, 1fr); column-gap: var(--gap); align-items: center;
+  padding: var(--section) var(--m) 0;
+}
+.ledger h2 { grid-column: 1 / span 5; font: 800 var(--fs-head) / 1.05 "Schibsted Grotesk", sans-serif; letter-spacing: -0.04em; }
+.ledger h2 span { display: block; }
+.ledger h2 span:first-child { color: var(--muted); }
+.rows { grid-column: 7 / -1; display: grid; gap: 20px; }
+.rows li {
+  display: grid; grid-template-columns: 0.62em 1.1em 1fr; align-items: baseline;
+  font: 800 var(--fs-display) / 1 "Schibsted Grotesk", sans-serif; letter-spacing: -0.04em;
+}
+.rows .whole { text-align: right; }
+.rows .whole, .rows .dec { overflow: clip; padding-bottom: 0.04em; }
+.rows .whole > span, .rows .dec > span { display: inline-block; }
+.rows .cap {
+  font: 400 var(--fs-lead) / 1.35 "Schibsted Grotesk", sans-serif; letter-spacing: -0.01em; color: var(--muted);
+  max-width: 24ch; padding-left: 16px;
+}
+
+/* ---------- proof: names as one sentence ---------- */
+.proof { padding: var(--section) var(--m) 0; }
+.names {
+  font: 600 clamp(1.5rem, 1rem + 1.4vw, 2.25rem) / 1.2 "Schibsted Grotesk", sans-serif; letter-spacing: -0.03em; color: #75848b; max-width: 52ch;
+}
+.names .lead-in { color: var(--ink); }
+.names span:not(.lead-in) { transition: color 400ms ease; }
+.names span.lit { color: var(--ink); }
+
+/* ---------- ask: a sentence with a blank ---------- */
+.ask { padding: var(--section) var(--m); }
+.ask-sentence {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.12em 0.24em;
+  font: 800 var(--fs-big) / 1.15 "Schibsted Grotesk", sans-serif; letter-spacing: -0.04em;
+}
+.ask select, .ask button {
+  font: inherit; letter-spacing: inherit; height: 1.15em; border: 0; border-radius: 0.14em; cursor: pointer;
+  padding: 0 0.3em; line-height: 1.15em;
+}
+.ask select {
+  appearance: none; background: var(--surface); color: var(--ink); width: 6.4em;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235d6b72' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-size: 0.36em auto; background-repeat: no-repeat; background-position: right 0.3em center;
+}
+.ask button {
+  background: var(--accent); color: var(--accent-ink);
+  transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease;
+}
+.ask button:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .ask button:hover { background: var(--accent-strong); } }
+.ask-note { margin-top: 24px; color: var(--muted); }
+.ask-sentence .br { flex-basis: 100%; height: 0; }
+
+/* ---------- footer: inverse field, cropped name ---------- */
+.foot {
+  min-height: 100svh; background: var(--ink); color: var(--bg); overflow: hidden;
+  display: grid; grid-template-rows: auto 1fr auto auto; padding: clamp(48px, 6vw, 96px) var(--m) 0;
+}
+.foot-top { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: var(--gap); }
+.foot-invite { grid-column: 1 / span 7; font: 800 var(--fs-big) / 1.02 "Schibsted Grotesk", sans-serif; letter-spacing: -0.04em; max-width: 12em; }
+.foot-links { grid-column: 10 / -1; display: grid; align-content: start; font-weight: 600; }
+.foot-links a { display: inline-block; padding: 8px 0; }
+.foot-credits {
+  grid-row: 3; display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  font-size: var(--fs-small); color: #b9c4c9; padding-bottom: 12px;
+}
+.foot-credits p { max-width: 70ch; }
+.foot-credits a { padding: 0; text-decoration-color: rgb(247 249 250 / 0.4); }
+.wordmark {
+  grid-row: 4; font: 800 28vw / 0.8 "Schibsted Grotesk", sans-serif; letter-spacing: -0.06em;
+  white-space: nowrap; transform: translateY(18%);
+}
+
+/* ---------- motion ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .js .hero [data-line] { transform: translateY(105%); animation: load-line 800ms var(--ease-expo) forwards; animation-delay: calc(100ms + var(--i) * var(--stagger-line)); }
+  .js .hero [data-load] { opacity: 0; transform: translateY(12px); animation: load-rise 500ms var(--ease-out) forwards; animation-delay: var(--d); }
+  .js .hero [data-open] { clip-path: inset(0 100% 0 0); animation: load-open 1100ms var(--ease-in-out) 150ms forwards; }
+  .js .hero [data-open] video { transform: scale(1.12); animation: load-settle 1500ms var(--ease-soft) 100ms forwards; }
+
+  /* the clip sits on the picture, not the frame: a fully clipped frame never reports as intersecting */
+  .js .shutter img { clip-path: inset(0 0 100% 0); transform: scale(1.12); transition: clip-path 1100ms var(--ease-in-out), transform 1500ms var(--ease-soft); }
+  .js .shutter.is-in img { clip-path: inset(0); transform: none; }
+
+  .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transition-delay: calc(var(--i, 0) * var(--stagger-item)); }
+  .js [data-reveal].is-in { opacity: 1; transform: none; }
+  .js .claim-pic:not(.object) img { transform: scale(1.06); transition: transform 1400ms var(--ease-soft); }
+  .js .claim-pic.is-in img { transform: none; }
+
+  .js .rows .whole > span, .js .rows .dec > span { transform: translateY(105%); transition: transform 900ms var(--ease-expo) calc(var(--i) * var(--stagger-item)); }
+  .js .rows .dec > span { transition-delay: calc(var(--i) * var(--stagger-item) + 90ms); }
+  .js .rows .cap { opacity: 0; transition: opacity 600ms var(--ease-out) 400ms; }
+  .js .rows li.is-in .whole > span, .js .rows li.is-in .dec > span { transform: none; }
+  .js .rows li.is-in .cap { opacity: 1; }
+}
+@keyframes load-line { to { transform: none; } }
+@keyframes load-rise { to { opacity: 1; transform: none; } }
+@keyframes load-open { to { clip-path: inset(0); } }
+@keyframes load-settle { to { transform: none; } }
+
+/* ---------- tablet ---------- */
+@media (max-width: 1100px) {
+  .claim-text, .ledger h2 { grid-column: 1 / span 6; }
+  .claim-pic, .rows { grid-column: 7 / -1; }
+  .claim.flip .claim-text { grid-column: 6 / -1; }
+  .claim.flip .claim-pic { grid-column: 1 / span 4; }
+  .claim-pic.tall { grid-column: 1 / span 4; }
+  .object { grid-column: 1 / -1; width: 70vw; }
+  .facts { grid-column: 1 / -1; padding: 0 var(--m); max-width: 760px; }
+  .record-list li { grid-template-columns: 4.5em 8em 1fr; }
+  .foot { min-height: 0; row-gap: clamp(96px, 16vw, 160px); }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 720px) {
+  .nav nav a:not(:last-child) { display: none; }
+  .hero { padding-top: 88px; gap: 32px; }
+  .sentence { font-size: 11.4vw; line-height: 0.95; row-gap: 0.18em; }
+  .sentence .line { flex: 1 0 100%; }
+  .slot { flex: 1 0 100%; width: 100%; height: auto; aspect-ratio: 3 / 2; border-radius: 6px; transform: none; }
+  .hero-foot { grid-template-columns: 1fr; row-gap: 24px; }
+  .hero-foot p, .button { grid-column: 1; justify-self: start; }
+
+  .stack { font-size: 15vw; }
+  .object { grid-column: 1 / -1; width: auto; margin: 48px var(--m) 0; transform: rotate(-2deg); }
+  .facts { grid-column: 1 / -1; margin-top: 48px; padding: 0 var(--m); }
+  .record-list li { grid-template-columns: 4em 1fr; }
+  .record-list li span:last-child { grid-column: 2; }
+
+  .claim, .ledger { grid-template-columns: 1fr; }
+  .claim-text, .claim-pic, .claim.flip .claim-text, .claim.flip .claim-pic, .claim-pic.tall, .ledger h2, .rows { grid-column: 1; grid-row: auto; }
+  .claim-pic.tall { max-width: 300px; justify-self: start; }
+  .ledger h2 { margin-bottom: 40px; }
+  .rows { gap: 28px; }
+  .rows li { grid-template-columns: 0.62em 1.1em 1fr; font-size: 15vw; }
+  .rows .cap { grid-column: 1 / -1; padding: 6px 0 0; max-width: none; }
+
+  .ask-sentence { font-size: 10vw; }
+  .ask select { flex: 1 0 100%; width: 100%; }
+
+  .foot-top { grid-template-columns: 1fr; row-gap: 24px; }
+  .foot-invite, .foot-links { grid-column: 1; }
+  .foot-invite { font-size: 11vw; }
+  .foot-links { display: flex; gap: 20px; }
+  .wordmark { font-size: 34vw; }
+}

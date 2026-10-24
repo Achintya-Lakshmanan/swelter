@@ -76,6 +76,7 @@
     for (const [key, label] of items) {
       const b = document.createElement("button");
       b.textContent = label; b.className = key === current ? "on" : "";
+      b.setAttribute("aria-pressed", key === current);
       b.onclick = () => onPick(key);
       el.appendChild(b);
     }
@@ -95,7 +96,7 @@
     renderControls();
     const [r, b] = await Promise.all([loadRun(sid()), loadRun(sid("none"))]);
     run = r; baseRun = b;
-    renderBadge(); renderSpark(); renderCompare(); renderMatrix(); renderProvenance();
+    renderBadge(); renderSpark(); renderCompare(); renderMatrix();
     if (state.selected !== null) renderInspector();
     // warm the cache for the other interventions at this level
     Object.keys(M.hazards[state.hazard].interventions).forEach((iv) => loadRun(sid(iv)));
@@ -121,9 +122,15 @@
     svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
     svg.innerHTML = `<path d="${d} L ${w} ${h} L 0 ${h} Z" fill="${HAZARD_COLOR[state.hazard]}" opacity=".18"/>` +
       `<path d="${d}" fill="none" stroke="${HAZARD_COLOR[state.hazard]}" stroke-width="2" vector-effect="non-scaling-stroke"/>` +
-      `<line id="spark-now" y1="0" y2="${h}" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"/>` +
-      `<text id="spark-val" y="11" font-size="11" fill="#e8ecf2" font-family="JetBrains Mono"></text>`;
+      `<line id="spark-now" y1="0" y2="${h}" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
   }
+  // short hazard reading under the clock
+  const READOUT = {
+    heat: (v) => `${Math.round(v)}°F heat index`,
+    smoke: (v) => `AQI ${Math.round(v)}`,
+    flood: (v) => `${v.toFixed(1)} in rain / 3 h`,
+    cold: (v) => `${Math.round(v)}°F wind chill`.replace("-", "−"),
+  };
   function intensityAt(t) {
     const I = run.intensity, x = Math.min(Math.max(t - 6, 0), I.length - 1), i = Math.floor(x), f = x - i;
     return I[i] + (I[Math.min(i + 1, I.length - 1)] - I[i]) * f;
@@ -138,6 +145,12 @@
     $("#compare-sub").textContent = isBase
       ? "Doing nothing. Pick an intervention to compare."
       : `${hz.interventions[state.iv].label} vs. doing nothing`;
+    // AQI 101-150 is "unhealthy for sensitive groups": a caution level for everyone here, so the bars are all zero
+    const peak = Math.max(...run.intensity), note = $("#compare-note");
+    note.hidden = !(state.hazard === "smoke" && baseRun.summary.all.all.danger_hours === 0);
+    if (!note.hidden) note.textContent = `Peak AQI ${Math.round(peak)} is a caution day: EPA rates 101–150 "unhealthy for ` +
+      `sensitive groups", so people with asthma or COPD, older adults and outdoor workers should cut back outdoor time, ` +
+      `but no one here reaches dangerous exposure. Try Severe or Record to see interventions make a difference.`;
     $("#compare-bars").innerHTML = hz.groups.map((g) => {
       const b = B[g]?.danger_hours ?? 0, v = G[g]?.danger_hours ?? 0;
       const pct = b > 0 ? Math.round(((v - b) / b) * 100) : 0;
@@ -170,18 +183,6 @@
     }).join("");
     $("#matrix").innerHTML = `<table><thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">Refuges are the city's real designated sites at their posted hours. Green = best option for that group.</p>`;
-  }
-
-  function renderProvenance() {
-    const v = run.verifier, pct = ((v.rejected / v.drafts) * 100).toFixed(1);
-    const types = new Set(M.residents.map((r) => r.type)).size;
-    $("#provenance").innerHTML = `
-      <div><b>${M.residents.length.toLocaleString()}</b> synthetic residents · <b>${types}</b> persona types, from <b>ACS 2024</b>, <b>RECS 2020</b> and <b>CDC PLACES</b></div>
-      <div>Each resident's weekday is a real <b>ATUS</b> diary; the hazard is the real hourly record for <b>${M.hazards[state.hazard].levels[state.level].label.split(" — ")[1]}</b></div>
-      <div><b>${M.places.length.toLocaleString()}</b> real places (OpenStreetMap + ${M.refuges.length} city cooling / warming sites), FEMA 2023 flood zones</div>
-      <div>Planner: <b>${run.planner === "rules" ? "rule-based (offline)" : "Claude + rules fallback"}</b> · choices limited to a fixed schema</div>
-      <div>Plausibility verifier rejected <b>${v.rejected}</b> of ${v.drafts.toLocaleString()} drafted days (${pct}%) and regenerated them</div>
-      <div>Exposure is computed deterministically: hazard × time outdoors × AC/heat/filtration where they are</div>`;
   }
 
   // ---------- map ----------
@@ -299,13 +300,9 @@
     $("#clock").textContent = fmtHour(state.t);
     $("#time").value = state.t;
     const x = ((state.t - 6) / 16.99) * 1000;
-    const now = document.getElementById("spark-now"), val = document.getElementById("spark-val");
+    const now = document.getElementById("spark-now");
     if (now) { now.setAttribute("x1", x); now.setAttribute("x2", x); }
-    if (val) {
-      const I = intensityAt(state.t);
-      val.setAttribute("x", Math.min(x + 6, 880));
-      val.textContent = `${I.toFixed(state.hazard === "flood" ? 1 : 0)} ${M.hazards[state.hazard].unit}`;
-    }
+    $("#readout").textContent = READOUT[state.hazard](intensityAt(state.t));
     const h = Math.min(Math.floor(state.t - 6), 16), counts = run.summary.hourly_levels[h];
     $("#legend").innerHTML = counts.map((c, l) => `<span><i style="background:rgb(${LEVEL_RGB[l]})"></i>${LEVEL_NAME[l]} <b>${c}</b></span>`).join("");
     if (state.selected !== null) {
@@ -486,11 +483,20 @@
       const a = Math.sin(i * 12.9898) * 43758.5453, b = Math.sin(i * 78.233) * 12345.6789;
       jitter.push([((a - Math.floor(a)) - 0.5) * 0.0007, ((b - Math.floor(b)) - 0.5) * 0.0005]);
     }
+    // deep links from the About page: ?hazard=smoke&level=extreme&iv=n95
+    const q = new URLSearchParams(location.search);
+    if (M.hazards[q.get("hazard")]) state.hazard = q.get("hazard");
+    if (M.hazards[state.hazard].levels[q.get("level")]) state.level = q.get("level");
+    if (M.hazards[state.hazard].interventions[q.get("iv")]) state.iv = q.get("iv");
     [roads, water] = await Promise.all([fetch("data/roads.json").then((r) => r.json()), fetch("data/waterways.json").then((r) => r.json())]);
 
     $("#ticks").innerHTML = [6, 9, 12, 15, 18, 21].map((h) => `<span>${fmtHour(h).replace(":00", "")}</span>`).join("");
     $("#time").oninput = (e) => { state.t = +e.target.value; redraw(); };
-    $("#play").onclick = () => { state.playing = !state.playing; $("#play").classList.toggle("playing", state.playing); };
+    $("#play").onclick = () => {
+      state.playing = !state.playing;
+      $("#play").classList.toggle("playing", state.playing);
+      $("#play").setAttribute("aria-label", state.playing ? "Pause" : "Play");
+    };
     $("#play").classList.add("playing");
     $("#speed").onchange = (e) => { state.speed = +e.target.value; };
     $("#btn-feature").onclick = featured;

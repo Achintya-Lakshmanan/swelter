@@ -1,0 +1,48 @@
+[
+ {
+  "file": "app/img/rowhouses-strawberry-mansion.jpg",
+  "media": "image",
+  "ref": "openverse:bd1728fe-b00a-4433-b959-5ff77e6549ec",
+  "title": "Street view of late 19th- or early 20th-century rowhouses at 2442 (red brick) and 2444 (pink facade) N Napa Street in the Strawberry Mansion neighborhood of Philadelphia, Pennsylvania",
+  "creator": "Eli Pousson",
+  "creatorUrl": null,
+  "date": null,
+  "license": "CC BY-SA 2.0",
+  "licenseCode": "by-sa",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+  "creditRequired": true,
+  "page": "https://commons.wikimedia.org/w/index.php?curid=178910947",
+  "via": "Wikimedia Commons",
+  "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Street_view_of_late_19th-_or_early_20th-century_rowhouses_at_2442_%28red_brick%29_and_2444_%28pink_facade%29_N_Napa_Street_in_the_Strawberry_Mansion_neighborhood_of_Philadelphia%2C_Pennsylvania.jpg/1920px-thumbnail.jpg",
+  "width": 1920,
+  "height": 1440,
+  "bytes": 618258,
+  "credit": "\"Street view of late 19th- or early 20th-century rowhouses at 2442 (red brick) and 2444 (p…\" by Eli Pousson, CC BY-SA 2.0, via Wikimedia Commons",
+  "notes": [
+   "Share-alike: an altered version (recoloured, combined with other pictures) must be shared under the same licence."
+  ],
+  "saved": "2026-10-24T22:36:41.413Z"
+ },
+ {
+  "file": "app/img/schuylkill-trail-flooded.jpg",
+  "media": "image",
+  "ref": "openverse:ff700530-10c5-455e-8c67-a181f6a434fc",
+  "title": "flooded schuylkill river trail",
+  "creator": "snake fish",
+  "creatorUrl": "https://www.flickr.com/photos/52861868@N07",
+  "date": null,
+  "license": "CC BY 2.0",
+  "licenseCode": "by",
+  "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+  "creditRequired": true,
+  "page": "https://www.flickr.com/photos/52861868@N07/6091799648",
+  "via": "Flickr",
+  "image": "https://live.staticflickr.com/6089/6091799648_3ec7ed473e_b.jpg",
+  "width": 1023,
+  "height": 680,
+  "bytes": 256909,
+  "credit": "\"flooded schuylkill river trail\" by snake fish, CC BY 2.0, via Flickr",
+  "notes": [],
+  "saved": "2026-10-24T22:36:44.938Z"
+ }
+]
