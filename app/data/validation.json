@@ -1,0 +1,57 @@
+{
+ "title": "Hot-day behavior change, Philadelphia",
+ "description": "Real: Google Community Mobility Reports for Philadelphia County, summer weekdays 2020\u20132022, hot days (PHL Tmax \u2265 92\u00b0F, n=44) vs typical days (78\u201388\u00b0F, n=94), compared within the same month. Simulated: the same residents on a moderate heatwave vs a normal summer day.",
+ "y_label": "Change on hot days (percentage points / %)",
+ "rows": [
+  {
+   "key": "parks",
+   "label": "Parks",
+   "real": -2.6,
+   "sim": -12.4
+  },
+  {
+   "key": "residential",
+   "label": "Home",
+   "real": -0.1,
+   "sim": 0.6
+  },
+  {
+   "key": "retail_rec",
+   "label": "Retail & rec",
+   "real": -0.4,
+   "sim": 0.0
+  },
+  {
+   "key": "grocery",
+   "label": "Grocery",
+   "real": -0.7,
+   "sim": 0.0
+  },
+  {
+   "key": "workplaces",
+   "label": "Work",
+   "real": -0.5,
+   "sim": -0.3
+  },
+  {
+   "key": "transit",
+   "label": "Transit",
+   "real": -0.6,
+   "sim": -0.4
+  }
+ ],
+ "mae_pp": 2.0,
+ "error_label": "Mean absolute error: 2.0 percentage points across 6 activity categories",
+ "calibration": [
+  {
+   "version": "v1 \u00b7 aware residents always cancel outdoor plans",
+   "mae_pp": 5.6
+  },
+  {
+   "version": "v2 \u00b7 current rules (cancel / shift / go anyway)",
+   "mae_pp": 2.0
+  }
+ ],
+ "real_source_short": "Google mobility \u00d7 NOAA",
+ "notes": "Caveats: mobility data are from the COVID era (2020\u201322) and measure visits relative to a Jan\u2013Feb 2020 baseline; the simulation measures resident-hours. The sim still over-predicts how much people avoid parks. Next step: ATUS diaries \u00d7 NOAA for time-use validation."
+}

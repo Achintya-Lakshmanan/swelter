@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Swelter · Philadelphia</title>
+  <link rel="stylesheet" href="vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <div class="brand-name">Swelter</div>
+        <div class="brand-sub">Philadelphia disaster what-if</div>
+      </div>
+    </div>
+    <nav class="controls">
+      <div class="seg" id="hazard-seg" role="tablist" aria-label="Hazard"></div>
+      <div class="seg" id="level-seg" aria-label="Severity"></div>
+      <div class="seg" id="iv-seg" aria-label="Intervention"></div>
+      <select id="site-select" class="site-select" aria-label="Refuge site"></select>
+    </nav>
+    <div class="top-actions">
+      <button class="ghost" id="btn-validate">Validation</button>
+      <button class="ghost" id="btn-methods">Methods</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="map-wrap">
+      <div id="map"></div>
+      <div class="map-badge" id="iv-badge"></div>
+      <div id="tooltip" class="tooltip" hidden></div>
+
+      <aside class="inspector" id="inspector" hidden>
+        <button class="close" id="insp-close" aria-label="Close">×</button>
+        <div id="insp-body"></div>
+      </aside>
+
+      <div class="timebar">
+        <button class="play" id="play" aria-label="Play/pause"></button>
+        <div class="clock" id="clock">6:00 AM</div>
+        <div class="time-track">
+          <svg id="spark" class="spark" preserveAspectRatio="none"></svg>
+          <input type="range" id="time" min="6" max="22.99" step="0.01" value="6" aria-label="Time of day">
+          <div class="ticks" id="ticks"></div>
+        </div>
+        <div class="legend" id="legend"></div>
+        <select id="speed" class="speed" aria-label="Playback speed">
+          <option value="0.25">0.5×</option>
+          <option value="0.5" selected>1×</option>
+          <option value="1">2×</option>
+        </select>
+      </div>
+    </section>
+
+    <aside class="panel" id="panel">
+      <div class="panel-head">
+        <div class="eyebrow" id="history-eyebrow">Compare</div>
+        <h2 id="compare-title">Dangerous hours per person</h2>
+        <p class="muted" id="compare-sub"></p>
+      </div>
+      <div id="compare-bars" class="bars"></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="section-title">Every intervention at this severity</div>
+      <div id="matrix" class="matrix"></div>
+      <button class="feature-btn" id="btn-feature">Show me someone whose day changed</button>
+      <p class="hint">Click a group to highlight its residents on the map. Click any dot to inspect a resident.</p>
+      <div class="section-title">How this run was made</div>
+      <div id="provenance" class="provenance"></div>
+      <div class="history" id="history"></div>
+    </aside>
+  </main>
+
+  <dialog id="modal" class="modal">
+    <button class="close" id="modal-close" aria-label="Close">×</button>
+    <div id="modal-body"></div>
+  </dialog>
+
+  <script src="vendor/maplibre-gl.js"></script>
+  <script src="vendor/deckgl.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
