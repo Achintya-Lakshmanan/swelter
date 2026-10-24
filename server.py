@@ -55,11 +55,12 @@ def facts(sid, rid):
     flags = rn["flags"][rid]
     return {
         "resident": {k: r[k] for k in ("name", "age", "role", "alone", "car", "ac", "heat", "respiratory",
-                                        "poverty", "flood_zone", "tract_name", "source", "trace")}
+                                        "poverty", "flood_zone", "tract_name", "source")}
+        | {"trace": {k: v for k, v in r["trace"].items() if k != ("day_summer" if rn["hazard"] == "cold" else "day_winter")}}
         | {"groups": [m["groups"][g] for g in r["groups"]]},
         "scenario": {"hazard": hz["label"], "level": hz["levels"][rn["level"]]["label"], "unit": hz["unit"],
-                     "intervention": iv["label"], "intervention_detail": iv.get("desc", ""),
-                     "site": m["sites"][rn["site"]]["label"] if rn.get("site") else None},
+                     "real_day": hz["levels"][rn["level"]]["label"].split(" — ")[-1],
+                     "intervention": iv["label"], "intervention_detail": iv.get("desc", "")},
         "heard_warning": bool(flags & 1), "used_ac": bool(flags & 2), "wore_n95": bool(flags & 4),
         "heat_on": bool(flags & 8),
         "day": day,
@@ -73,12 +74,15 @@ def offline_explanation(f):
     r, sc, day = f["resident"], f["scenario"], f["day"]
     cold = f["scenario"]["hazard"] == "Winter storm"
     worst = max(day, key=lambda d: (d["level"], -d["hazard"] if cold else d["hazard"]))
+    diary = r["trace"].get("day_winter" if cold else "day_summer")
     whys = []
     for d in day:
         if d["why"] not in whys and d["why"] not in ("normal weekday routine", "travelling"):
             whys.append(d["why"])
     parts = [f"{r['name']} ({r['age']}, {r['role'].replace('_', ' ')}, {r['tract_name']}) "
              f"{'heard' if f['heard_warning'] else 'did not hear'} the warning."]
+    if diary:
+        parts.append(f"Their ordinary weekday comes from a real {diary.split(':')[0]}.")
     if whys:
         parts.append("Key choices: " + "; ".join(whys[:3]) + ".")
     if worst["level"] >= 2:
@@ -98,7 +102,7 @@ SYSTEM = """You explain one synthetic resident's simulated day in a city disaste
 Use ONLY the facts provided (persona, hourly plan with the planner's reason codes, exposure levels, baseline).
 In 3-4 plain sentences: why they did what they did, which hours were dangerous and why (place, indoors/outdoors,
 AC/heat/filtration, travel), and what the intervention changed for them versus doing nothing. Mention the data
-pattern they came from in a few words. No lists, no markdown, no speculation beyond the facts."""
+pattern they came from in a few words (their routine is a real ATUS diary; the weather is a real day). No lists, no markdown, no speculation beyond the facts."""
 
 
 def llm_explanation(f):

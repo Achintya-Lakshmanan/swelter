@@ -4,7 +4,7 @@ A day plan is 17 hourly slots (6am..10pm). Each slot = (activity, place_slot). A
 list; place slots are symbolic ("library", "refuge") and resolve to real OSM places per resident. Nothing
 free-text reaches the map.
 """
-from .hazards import HOURS, SITES
+from .hazards import HOURS
 from .world import HOURS_OPEN, World, dist_m
 
 ACTIVITIES = {
@@ -36,19 +36,20 @@ WALK_KMH, OLDER_WALK_KMH, TRANSIT_KMH, CAR_KMH = 4.5, 3.2, 13.0, 25.0
 
 
 def refuge_place(world: World, resident, scenario):
-    """The official refuge for this scenario, if any, and its open hours."""
-    hz, iv, site = scenario["hazard"], scenario["intervention"], scenario["site"]
-    if iv == "refuge":
-        hours = {"heat": (9, 20), "smoke": (9, 20), "flood": (15, 24), "cold": (0, 24)}[hz]
-        return world.by_id[SITES[site]["place_id"]], hours
-    if hz == "heat" and iv == "transit":
-        # Free SEPTA to the city's existing library cooling sites (regular library hours).
-        home = world.by_id[resident["home"]]
-        return world.nearest(home["lat"], home["lon"], {"library"}), HOURS_OPEN["library"]
-    if hz == "cold" and iv == "outreach":
-        home = world.by_id[resident["home"]]
-        return world.nearest(home["lat"], home["lon"], {"community_centre"}), (0, 24)
-    return None, None
+    """The real city site this resident would use in this scenario (nearest eligible one), and its open hours."""
+    hz, iv = scenario["hazard"], scenario["intervention"]
+    home = world.by_id[resident["home"]]
+    if iv == "refuge" or (hz == "heat" and iv == "transit"):
+        if hz == "flood":  # shelters: city sites outside the FEMA flood zone, opened from 3pm
+            cands, hours = [r for r in world.refuges if not world.flood_prone(r["lat"], r["lon"])], (15, 24)
+        else:
+            cands, hours = [r for r in world.refuges if r["warming" if hz == "cold" else "cooling"]], None
+    elif hz == "cold" and iv == "outreach":  # outreach vans go to the 24-hour warming sites
+        cands, hours = [r for r in world.refuges if r["warming"] and tuple(r["hours"]) == (0, 24)], None
+    else:
+        return None, None
+    site = min(cands, key=lambda r: dist_m(home["lat"], home["lon"], r["lat"], r["lon"]))
+    return world.by_id[site["id"]], hours or tuple(site["hours"])
 
 
 def resolve_slots(world: World, resident, scenario):

@@ -7,13 +7,14 @@ the violations, then fall back to the rule planner (counted in the run's verifie
 Needs ANTHROPIC_API_KEY (or an `ant auth login` profile). Offline batch only — the demo replays stored runs.
 """
 import json
+import random
 from concurrent.futures import ThreadPoolExecutor
 
 import anthropic
 
-from .hazards import HAZARDS, HOURS, SITES
+from .hazards import HAZARDS, HOURS
 from .plan import ACTIVITIES, ACTIVITY_LIST, SLOT_LIST, refuge_place, travel
-from .rules import REASONS, RULES_TEXT
+from .rules import REASONS, RULES_TEXT, baseline_day
 from .world import HOURS_OPEN, dist_m
 
 MODEL = "claude-opus-5-5"
@@ -66,6 +67,8 @@ def _persona_card(world, r, scenario, slots):
         f"role={r['role']} age={r['age']} lives_alone={r['alone']} car={r['car']} home_ac={r['ac']} "
         f"reliable_heat={r['heat']} asthma_copd={r['respiratory']} low_income={r['poverty']} "
         f"home_flood_prone={r['flood_zone']} neighborhood={r['tract_name']}",
+        "usual weekday (a real ATUS diary of someone like them): "
+        + ", ".join(f"{h}:{a}@{s}" for h, (a, s, _) in zip(HOURS, baseline_day(r, scenario["hazard"], random.Random(r["id"])))),
         "place slots (minutes from home, open hours):",
     ]
     for s in SLOT_LIST:
@@ -96,7 +99,6 @@ class LLMPlanner:
             f"Hazard: {hz['label']} ({hz['levels'][scenario['level']]['label']}). Hourly {hz['unit']}: "
             + ", ".join(f"{h}:00={v:g}" for h, v in zip(HOURS, intensity))
             + f"\nIntervention: {iv['label']}. {iv.get('desc', '')}"
-            + (f" Site: {SITES[scenario['site']]['label']}." if scenario["site"] else "")
         )
         msg = situation + "\n\nPersonas:\n\n" + "\n\n".join(cards) + feedback
         resp = self.client.beta.messages.create(

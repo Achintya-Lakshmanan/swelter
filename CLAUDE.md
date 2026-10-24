@@ -9,16 +9,24 @@ picks a hazard (heatwave / wildfire smoke / flash flood / winter storm), a sever
 replays a simulated day of synthetic residents (dots colored by exposure); a compare panel shows exposure by
 group vs. doing nothing; clicking a resident gives a live LLM explanation of why they did what they did.
 
-## Current state (Oct 24, evening)
+## Current state (Oct 24, late evening) — everything runs on real data
 Working end to end — see README.md for commands. `uv run server.py` → http://localhost:8000.
 - Study area: Center City, University City, North Philly incl. Hunting Park (bbox `39.935,-75.215,40.030,-75.120`).
-- 72 precomputed runs: 4 hazards × 3 levels × (none, refuge at 3 candidate sites, 2 hazard-specific interventions).
-  Refuge sites: Parkway Central Library, Hunting Park NAC, Lillian Marrero Library.
-- 1,560 residents / ~170 persona types from ACS 2024 tracts (via Census Reporter — the Census API now needs a key).
-- Runs currently use the rule planner. LLM planner (`--planner llm`) is built and plumbing-tested with a stub, but
-  has not been run against the real API yet (no key on this machine).
-- Validation: Google mobility (Philly County) × NOAA PHL instead of ATUS — BLS blocks scripted downloads.
-  ATUS is still the next step (download in a browser into data/raw/).
+- 48 precomputed runs: 4 hazards × 3 levels × 4 interventions. Each level replays a **real day** (median event day,
+  top-5% day, worst on record): NOAA hourly at PHL for heat index / wind chill / 3-h rain, EPA AQS NowCast for smoke
+  (June 2023). Refuges are the city's **real 31 cooling/warming sites** with posted hours (no more site picker).
+- Residents: ACS 2024 tracts (age, employment by age, occupation, college, 65+ alone, poverty, cars), RECS 2020 PA
+  (AC / heat by poverty), CDC PLACES 2024 release (asthma + COPD; the 2025 release has no PA values).
+  FEMA 2023 flood zones and the city's Heat Exposure Index replace the river-distance / park-density proxies.
+- Each housed resident's weekday is a **real ATUS diary** (2018–2024, Philadelphia metro first, then Northeast metros;
+  lockdown months excluded). BLS's multi-year respondent/CPS zips are corrupt on their server, and per-year files
+  start in 2018 — downloaded through Chrome into data/raw/atus/.
+- Behavior parameters (cancel / shift / vulnerable-stay) are grid-fit to Google mobility 2020–21 and validated on
+  2022: held-out MAE 0.6 pp. ATUS × NOAA hot-day analysis was too noisy to fit (95% CI −55%…+160%); reported as evidence.
+- Runs use the rule planner. LLM planner (`--planner llm`) gets the diary day in each persona card but has not been run
+  against the real API (no key on this machine).
+- Still assumed (listed in the Methods modal): indoor temperatures/filtration, HEI→°F scale, flood-zone weights,
+  riverfront wind, warning awareness, refuge travel limits, unhoused schedule.
 
 Judges should get it in 10 seconds. Demo opens on the map, not slides.
 
@@ -32,10 +40,10 @@ Judges should get it in 10 seconds. Demo opens on the map, not slides.
 - One validation chart + one error number: simulated vs. real hot-day behavior.
 
 ## Scenario grid (precomputed)
-Per hazard: 3 levels × (none / refuge at chosen site / 2 hazard-specific interventions). Heat: cooling center,
-free SEPTA to library cooling sites, early heat alert. Smoke: clean-air center, N95 giveaway, Code Red alert.
-Flood: emergency shelter, pre-emptive road closures, early flood warning. Cold: warming center, outreach + open
-SEPTA stations, early Code Blue.
+Per hazard: 3 real days × (none / open the city's real refuge sites / 2 hazard-specific interventions). Heat: cooling
+sites, free SEPTA to cooling, early heat alert. Smoke: clean-air rooms, N95 giveaway, Code Red alert. Flood: shelters
+outside the FEMA zone, pre-emptive road closures, early flood warning. Cold: warming sites, outreach to 24-hour
+sites, early Code Blue.
 
 Groups in the compare panel are hazard-specific (e.g. heat: older adults living alone, outdoor workers, no-AC
 households, students, unhoused residents).

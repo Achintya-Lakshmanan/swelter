@@ -1,6 +1,6 @@
 """Batch-generate every scenario run. The app replays these files; only the "why" explainer is live.
 
-    python3 scripts/simulate.py                       # rule planner, all 72 runs
+    python3 scripts/simulate.py                       # rule planner, all 48 runs
     python3 scripts/simulate.py --planner llm --only heat_severe   # Claude plans persona types (needs API key)
 
 Writes app/data/meta.json (places, residents, hazard config) and app/data/runs/<scenario>.json.
@@ -15,7 +15,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))  # swelter pack
 
 from swelter import hazards as H  # noqa: E402
 from swelter.exposure import score, summarize  # noqa: E402
-from swelter.personas import ASSUMPTIONS, PersonaBuilder  # noqa: E402
+from swelter.personas import ASSUMPTIONS, SOURCES, PersonaBuilder  # noqa: E402
 from swelter.plan import ACTIVITY_LIST, bad_hours, repair, resolve_slots, verify  # noqa: E402
 from swelter.rules import REASONS, RulePlanner  # noqa: E402
 from swelter.world import DATA, ROOT, World  # noqa: E402
@@ -25,7 +25,7 @@ REASON_LIST = list(REASONS)
 
 
 def hazard_grid(world, step=0.0035):
-    """Overlay cells: [lat, lon, heat-island °F, flood-prone 0/1, riverfront wind °F]."""
+    """Overlay cells: [lat, lon, heat-exposure °F, FEMA flood weight 0..1, riverfront wind °F]."""
     from fetch_osm import BBOX
     s, w, n, e = map(float, BBOX.split(","))
     cells = []
@@ -35,8 +35,8 @@ def hazard_grid(world, step=0.0035):
         while lon < e:
             if not world._east_of(world._delaware, lat, lon):
                 sub = [(lat + dy, lon + dx) for dy in (-step / 4, step / 4) for dx in (-step / 4, step / 4)]
-                flood = sum(world.flood_prone(a, b) for a, b in sub) >= 2
-                cells.append([round(lat, 5), round(lon, 5), world.heat_island(lat, lon), int(flood),
+                flood = round(sum(world.flood_weight(a, b) for a, b in sub) / 4, 2)
+                cells.append([round(lat, 5), round(lon, 5), world.heat_island(lat, lon), flood,
                               world.wind_exposure(lat, lon)])
             lon += step
         lat += step
@@ -161,6 +161,7 @@ def main():
         "activities": ACTIVITY_LIST,
         "reasons": REASONS,
         "assumptions": {k: {"value": v[0], "source": v[1]} for k, v in ASSUMPTIONS.items()},
+        "sources": {k: {"value": v[0], "source": v[1]} for k, v in SOURCES.items()},
         "places": places_out,
         "residents": [{k: r[k] for k in ("id", "name", "age", "role", "alone", "car", "ac", "heat", "respiratory",
                                           "poverty", "flood_zone", "groups", "type", "tract", "tract_name",

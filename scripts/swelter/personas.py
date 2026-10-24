@@ -1,12 +1,15 @@
-"""Synthetic residents drawn from real ACS tract statistics.
+"""Synthetic residents drawn from real data: ACS tract statistics (age, work, occupation, poverty, cars, living alone),
+EIA RECS 2020 (AC / heating by poverty), CDC PLACES (tract asthma + COPD), and a real ATUS diary for their weekday.
 
-Each resident records which tract statistic set each attribute (`trace`), so every persona traces back
-to the data pattern it came from. Residents collapse into persona *types* (the categorical
+Each resident records which statistic set each attribute (`trace`), so every persona traces back to the data
+pattern it came from. Residents collapse into persona *types* (the categorical
 attributes that matter for behavior); the LLM planner works per type, the map shows residents.
 """
+import json
 import random
 
-from .world import HOME_KINDS, World, dist_m
+from .diaries import DiaryPool
+from .world import DATA, HOME_KINDS, World, dist_m
 
 FIRST_NAMES = [
     "Ana", "Andre", "Aisha", "Bea", "Bilal", "Carmen", "Chen", "Dani", "Darnell", "Deja", "Eli", "Elena",
@@ -20,19 +23,23 @@ FIRST_NAMES = [
 # (Philadelphia Office of Homeless Services, Point-in-Time counts).
 UNHOUSED_HUBS = [((39.9965, -75.1340), 0.7, "Kensington Ave & Allegheny"), ((39.9526, -75.1636), 0.3, "Center City")]
 
-# Assumptions not yet tied to a tract table (documented in the methods note).
+INPUTS = json.loads((DATA / "inputs.json").read_text())
+RECS = INPUTS["recs"]
+
+# What still isn't measured per resident (shown in the methods note).
 ASSUMPTIONS = {
-    "employment_rate": (0.62, "Philadelphia employment-population ratio, ACS (approx.)"),
-    "no_ac_base": (0.08, "EIA RECS 2020: ~9 in 10 Mid-Atlantic homes use AC"),
-    "no_ac_poverty_add": (0.22, "RECS 2020: AC access lower in low-income households (assumed gap)"),
-    "no_heat_base": (0.03, "RECS 2020 energy insecurity (assumed)"),
-    "no_heat_poverty_add": (0.12, "RECS 2020: unsafe indoor temps concentrated in low-income homes (assumed)"),
-    "respiratory_base": (0.11, "CDC PLACES Philadelphia adult asthma prevalence (approx.)"),
+    "alone_under_65": (0.22, "Share of adults under 65 living alone (only used for labels; not tract-specific)"),
+    "unhoused_oversample": (60, "Unhoused residents simulated (oversampled vs the real ~0.1% of residents so the group has "
+                                "enough people; group results are per-person averages)"),
 }
-
-
-def _a(key):
-    return ASSUMPTIONS[key][0]
+SOURCES = {
+    "no_ac": (RECS["no_ac"], f"EIA RECS 2020, Pennsylvania households: no air conditioning, by poverty (n={RECS['n']})"),
+    "no_heat": (RECS["no_heat"], "EIA RECS 2020, Pennsylvania: couldn't use main heating equipment at some point in the year"),
+    "respiratory": ("by tract", INPUTS["respiratory_source"]),
+    "age_work_occupation": ("by tract", "ACS 2024 5-year: B01001 age, B23001 employment by age, C24010 occupation, "
+                                        "B14001 college enrollment, B11007 65+ living alone, B17001 poverty, B08201 vehicles"),
+    "weekday": ("by role", "BLS ATUS 2018-2024 weekday diaries, Philadelphia metro first (scripts/atus.py)"),
+}
 
 
 class PersonaBuilder:
@@ -41,6 +48,7 @@ class PersonaBuilder:
         self.rng = random.Random(seed)
         self.homes = [p for p in world.places if p["kind"] in HOME_KINDS]
         self.campuses = [p for p in world.places if p["kind"] in {"campus", "dorm"}]
+        self.diaries = DiaryPool()
 
     def _home_near(self, lat, lon):
         hits = self.w.nearby(lat, lon, 700, HOME_KINDS) or self.w.nearby(lat, lon, 2000, HOME_KINDS)
@@ -84,51 +92,62 @@ class PersonaBuilder:
     def _resident(self, rid, t, home):
         r = self.rng
         trace = {}
-        u = r.random()
-        if u < t["share_65plus"]:
-            age = "75+" if r.random() < 0.42 else "65-74"
-            role = "retired" if r.random() < 0.85 else "office"
-            trace["age"] = f"{t['share_65plus']:.0%} of tract is 65+"
-        elif u < t["share_65plus"] + t["share_students"]:
-            age, role = "18-24", "student"
-            trace["age"] = f"{t['share_students']:.0%} of tract enrolled in college"
-        else:
-            age = r.choice(["25-44", "25-44", "45-64"])
-            if r.random() < _a("employment_rate"):
-                v = r.random()
-                outdoor = min(0.45, t["share_outdoor_occ"])
-                role = ("outdoor" if v < outdoor else "healthcare" if v < outdoor + 0.18
-                        else "service" if v < outdoor + 0.43 else "office")
-                trace["role"] = f"{t['share_outdoor_occ']:.0%} of tract workers in construction/transport jobs"
-            else:
-                role = "not_employed"
+        ages = t["adult_age_shares"]
+        age = r.choices(list(ages), list(ages.values()))[0]
         older = age in ("65-74", "75+")
-        if older:
-            p_alone = max(0.2, min(0.6, 1.3 * t["share_hh_65alone"] / max(t["share_65plus"], 0.01)))
-            trace["alone"] = f"{t['share_hh_65alone']:.0%} of tract households are a 65+ person alone"
+        trace["age"] = f"{ages[age]:.0%} of tract adults are {age}"
+        if age == "18-24" and r.random() < t["college_per_18_24"]:
+            role = "student"
+            trace["role"] = f"tract college enrollment ≈ {t['college_per_18_24']:.0%} of 18-24s"
         else:
-            p_alone = 0.1 if role == "student" else 0.22
+            emp = t["emp_rate_65plus" if older else "emp_rate_20_64"]
+            if r.random() < emp:
+                occ, v = t["occ_shares"], r.random()
+                role = ("healthcare" if v < occ["healthcare"] else "outdoor" if v < occ["healthcare"] + occ["outdoor"]
+                        else "service" if v < occ["healthcare"] + occ["outdoor"] + occ["service"] else "office")
+                trace["role"] = (f"{emp:.0%} of tract {'65+' if older else '20-64'} employed; workers: {occ['healthcare']:.0%} "
+                                 f"healthcare, {occ['outdoor']:.0%} construction/transport/grounds, {occ['service']:.0%} service/sales")
+            else:
+                role = "retired" if older else "not_employed"
+                trace["role"] = f"{1 - emp:.0%} of tract {'65+' if older else '20-64'} not employed"
+        if older:
+            p_alone = t["share_65plus_alone"]
+            trace["alone"] = f"{p_alone:.0%} of tract 65+ residents live alone"
+        else:
+            p_alone = 0.1 if role == "student" else ASSUMPTIONS["alone_under_65"][0]
         alone = r.random() < p_alone
         poverty = r.random() < t["share_poverty"]
         trace["poverty"] = f"{t['share_poverty']:.0%} of tract below poverty line"
-        p_nocar = min(0.95, t["share_hh_nocar"] + (0.3 if role == "student" else 0))
-        car = r.random() >= p_nocar
+        car = r.random() >= t["share_hh_nocar"]
         trace["car"] = f"{t['share_hh_nocar']:.0%} of tract households have no vehicle"
-        ac = r.random() >= _a("no_ac_base") + (_a("no_ac_poverty_add") if poverty else 0) + (0.05 if age == "75+" else 0)
-        heat = r.random() >= _a("no_heat_base") + (_a("no_heat_poverty_add") if poverty else 0)
-        resp = r.random() < _a("respiratory_base") + (0.05 if poverty else 0) + (0.06 if older else 0)
+        band = "poverty" if poverty else "other"
+        ac = r.random() >= RECS["no_ac"][band]
+        heat = r.random() >= RECS["no_heat"][band]
+        trace["ac"] = (f"RECS 2020 PA: {RECS['no_ac'][band]:.0%} of {'low-income ' if poverty else ''}homes have no AC, "
+                       f"{RECS['no_heat'][band]:.0%} lost heat")
+        p_resp = INPUTS["respiratory_by_tract"].get(t["geoid"])
+        if p_resp is None:
+            p_resp = sorted(INPUTS["respiratory_by_tract"].values())[len(INPUTS["respiratory_by_tract"]) // 2]
+        resp = r.random() < p_resp
+        trace["respiratory"] = f"CDC PLACES: {p_resp:.0%} of tract adults have asthma or COPD"
         if home["kind"] == "dorm":
             role, age, ac, heat = "student", "18-24", True, True
+            trace["role"] = "lives in a university dorm"
         work = None
         if role in ("office", "service", "healthcare", "outdoor"):
             work = self._work_for(role, home)
         elif role == "student":
             hits = self.w.nearby(home["lat"], home["lon"], 4000, {"campus"})
             work = (r.choice(hits[:15])[1] if hits else None)
+        days = {}
+        for season in ("summer", "winter"):
+            d, tier, n = self.diaries.pick(role, age, season, r)
+            days[season] = d["steps"]
+            trace[f"day_{season}"] = self.diaries.describe(d, tier, n)
         return self._finish({
             "id": rid, "name": r.choice(FIRST_NAMES), "age": age, "role": role, "alone": alone,
             "car": car, "ac": ac, "heat": heat, "respiratory": resp, "poverty": poverty,
-            "home": home["id"], "work": work["id"] if work else None,
+            "home": home["id"], "work": work["id"] if work else None, "days": days,
             "tract": t["geoid"], "tract_name": t["name"], "source": t["source"], "trace": trace,
         })
 
@@ -136,17 +155,21 @@ class PersonaBuilder:
         r = self.rng
         return self._finish({
             "id": rid, "name": r.choice(FIRST_NAMES), "age": r.choice(["25-44", "45-64", "45-64", "65-74"]),
-            "role": "unhoused", "alone": True, "car": False, "ac": False, "heat": False,
+            "role": "unhoused", "alone": True, "car": False, "ac": False, "heat": False, "days": None,
             "respiratory": r.random() < 0.25, "poverty": True, "home": spot["id"], "work": None,
             "tract": self.w.nearest_tract(spot["lat"], spot["lon"])["geoid"], "tract_name": hub,
             "source": "Philadelphia Point-in-Time count: unsheltered residents concentrated in Kensington & Center City",
-            "trace": {"role": f"sleeps outdoors near {hub}"},
+            "trace": {"role": f"sleeps outdoors near {hub}",
+                      "day": "No survey covers unsheltered days (ATUS samples households): schedule built around meal programs and library hours"},
         })
 
     def _finish(self, p):
         w = self.w
         home = w.by_id[p["home"]]
         p["flood_zone"] = w.flood_prone(home["lat"], home["lon"]) and p["role"] != "unhoused"
+        if p["flood_zone"]:
+            zone = {"floodway": "floodway", "1pct": "1%-annual-chance", "0.2pct": "0.2%-annual-chance"}[w.flood_zone(home["lat"], home["lon"])]
+            p["trace"]["flood"] = f"home is in FEMA's {zone} flood zone (2023 map)"
         if p["work"]:
             wk = w.by_id[p["work"]]
             p["commute_km"] = round(dist_m(home["lat"], home["lon"], wk["lat"], wk["lon"]) / 1000, 2)

@@ -1,4 +1,4 @@
-"""Rule-based planner: ATUS-style day templates + hazard behavior rules.
+"""Rule-based planner: each resident's real ATUS diary day + hazard behavior rules.
 
 This is the offline default (no API key needed) and the fallback when the LLM's plan fails verification.
 RULES_TEXT is the same knowledge, written for the LLM planner. Each hour carries a reason code (`why`)
@@ -8,15 +8,20 @@ Common random numbers: a resident's random draws depend only on (resident, hazar
 makes the same baseline choices in every intervention — differences between runs come from the
 intervention, not from noise.
 """
+import json
 import random
 
+from .diaries import HAZARD_SEASON
 from .hazards import HOURS
-from .plan import refuge_place, travel
-from .world import dist_m
+from .plan import ACTIVITY_LIST, SLOT_LIST, is_open, refuge_place, travel
+from .world import DATA, dist_m
 
-# Of residents who hear a warning and had optional outdoor plans in dangerous hours: share who cancel,
-# share who shift to a safer hour; the rest go anyway (vulnerable residents never "go anyway").
-AVOID_CANCEL, AVOID_SHIFT = 0.35, 0.45
+# Of residents who hear a warning and had optional outdoor plans in dangerous hours: share who cancel, share who shift
+# to a safer hour; the rest go anyway. VULN_STAY: whether warned vulnerable residents (older, asthma/COPD) always stay
+# in. All three are fit to Philadelphia hot-day mobility (Google CMR 2020-21) by scripts/validate.py; 2022 is held out.
+_FIT = DATA / "behavior_fit.json"
+_fit = json.loads(_FIT.read_text()) if _FIT.exists() else {"cancel": 0.35, "shift": 0.45, "vuln_stay": True}
+AVOID = (_fit["cancel"], _fit["shift"], _fit["vuln_stay"])
 
 REASONS = {
     "routine": "normal weekday routine",
@@ -46,9 +51,9 @@ Behavior knowledge (Philadelphia; cite as heat/smoke/flood/cold behavior literat
 GENERAL
 - Only people who hear a warning change behavior. Baseline awareness ~55% (older adults living alone ~45%).
   An early official alert (Heatline, block captains, push alerts, Code Red/Blue) raises it to ~85-90%.
-- Aware people with optional outdoor plans in dangerous hours: ~35% cancel, ~45% shift them to a safer hour, ~20% go
-  anyway (vulnerable people don't). Philadelphia mobility data show only small hot-day drops in park visits. Unaware
-  people keep their routine.
+- Aware people with optional outdoor plans in dangerous hours: some cancel, some shift them to a safer hour, the rest go
+  anyway (vulnerable people don't). Philadelphia mobility data show only small hot-day drops in park visits, and ATUS
+  diaries show no clear hot-day drop in outdoor leisure. Unaware people keep their routine.
 - Officially designated refuges only help people who can reach them: ~1 km on foot (0.7 km for older adults),
   ~4 km by SEPTA if they are willing (free fares raise willingness), any distance by car. Unhoused people walk up to ~2 km.
 - Outdoor workers usually keep working unless the employer changes the shift; official alerts make employers
@@ -57,105 +62,60 @@ HEAT: dangerous from ~11am-7pm. Homes without AC stay hot into the evening (Phil
   Some low-income older adults with AC keep it off to save money. Libraries are informal cooling spots.
 SMOKE: indoor air with windows open (no AC) is ~75% as bad as outside; central AC ~45%; HEPA refuge ~15%.
   N95 masks cut outdoor dose ~70% if worn. People with asthma/COPD who are aware stay indoors.
-FLOOD: rain peaks ~4-9pm. Most flood deaths are people driving into water. Ground-floor/basement homes near
+FLOOD: intensity is inches of rain in the past 3 hours at PHL. Most flood deaths are people driving into water. Ground-floor/basement homes near
   rivers flood. Aware drivers wait the storm out or leave early; road closures force detours.
 COLD: unsheltered residents and homes without reliable heat are at risk all day. Code Blue outreach brings
   unhoused people indoors; utility shutoff moratoria restore heat to some homes.
 """
 
 
-def _template(r, rng):
-    """ATUS-style weekday templates. Returns 17 [activity, slot, why]."""
-    role = r["role"]
+def baseline_day(r, hazard, rng):
+    """The resident's ordinary weekday as 17 [activity, slot, why]: their sampled ATUS diary for the hazard's season.
+    Unhoused residents are outside ATUS (a household survey), so their day is a schedule built around Philadelphia
+    meal programs and library hours."""
+    if r["role"] != "unhoused":
+        p = [[ACTIVITY_LIST[c // 20], SLOT_LIST[c % 20]] for c in r["days"][HAZARD_SEASON[hazard]]]
+        for step in p:
+            if step[0] in ("work_indoor", "work_outdoor") and not r["work"]:
+                step[:] = ["home", "home"]  # diary respondent worked; this resident has no job site
+            elif step[0] == "work_indoor" and r["role"] == "outdoor":
+                step[0] = "work_outdoor"  # ATUS doesn't say if a workplace is outdoors; for these occupations assume it is
+            elif step[1] == "work" and not r["work"]:
+                step[1] = "home"
+        return [[a, s, "commute" if a == "commute" else "routine"] for a, s in p]
     S = lambda a, s, w="routine": [a, s, w]  # noqa: E731
-    home, sleep = S("home", "home"), S("sleep", "home")
-    p = [home] * len(HOURS)
-
-    def put(h, step):
-        p[h - 6] = step
-
-    if role in ("office", "service", "healthcare"):
-        start, end = {"office": (9, 17), "service": (10, 18), "healthcare": (7, 19)}[role]
-        put(6, sleep)
-        put(start - 1, S("commute", "work", "commute"))
-        for h in range(start, end):
-            put(h, S("work_indoor", "work"))
-        if role == "office" and rng.random() < 0.5:
-            put(12, S("leisure_indoor", "food"))
-        put(end, S("commute", "home", "commute"))
-        if end + 1 <= 21 and rng.random() < 0.3:
-            put(end + 1, S("errand", "grocery"))
-        if role == "office" and rng.random() < 0.25:
-            put(19, S("exercise_outdoor", "park"))
-        put(22, sleep)
-    elif role == "outdoor":
-        put(6, S("commute", "work", "commute"))
-        for h in range(7, 15):
-            put(h, S("work_outdoor", "work"))
-        put(15, S("commute", "home", "commute"))
-        if rng.random() < 0.3:
-            put(17, S("errand", "grocery"))
-        if rng.random() < 0.35:
-            put(18, S("leisure_outdoor", "park"))
-        put(22, sleep)
-    elif role == "student":
-        for h in (6, 7, 8):
-            put(h, sleep)
-        put(9, S("commute", "campus", "commute"))
-        for h in range(10, 15):
-            put(h, S("class", "campus"))
-        put(12, S("leisure_indoor", "food"))
-        if rng.random() < 0.5:
-            put(15, S("public_indoor", "library"))
-            put(16, S("public_indoor", "library"))
-        else:
-            put(15, S("class", "campus"))
-            put(16, S("commute", "home", "commute"))
-        if rng.random() < 0.35:
-            put(17, S("exercise_outdoor", "park"))
-        if rng.random() < 0.4:
-            put(19, S("leisure_outdoor", "park"))
-        if rng.random() < 0.4:
-            put(20, S("leisure_indoor", "food"))
-    elif role in ("retired", "not_employed"):
-        put(6, sleep)
-        u = rng.random()
-        if u < 0.45:
-            put(10, S("errand", "grocery"))
-        elif u < 0.7:
-            put(9, S("exercise_outdoor", "park"))
-        if rng.random() < 0.25:
-            put(11, S("leisure_indoor", "community_centre"))
-        if rng.random() < (0.3 if role == "retired" else 0.4):
-            put(15, S("leisure_outdoor", "park"))
-            put(16, S("leisure_outdoor", "park"))
-        if rng.random() < 0.2:
-            put(14, S("errand", "health"))
-        if rng.random() < 0.1:
-            put(18, S("leisure_indoor", "worship"))
-        put(22, sleep)
-    elif role == "unhoused":
-        p = [S("outdoors_unsheltered", "home", "unsheltered")] * len(HOURS)
-        if rng.random() < 0.5:
-            p[9 - 6] = S("leisure_indoor", "community_centre")  # meal program
-        if rng.random() < 0.4:
-            p[17 - 6] = S("leisure_indoor", "worship")  # evening meal
-        if rng.random() < 0.2:
-            for h in (13, 14, 15):
-                p[h - 6] = S("public_indoor", "library")
+    p = [S("outdoors_unsheltered", "home", "unsheltered")] * len(HOURS)
+    if rng.random() < 0.5:
+        p[9 - 6] = S("leisure_indoor", "community_centre")  # meal program
+    if rng.random() < 0.4:
+        p[17 - 6] = S("leisure_indoor", "worship")  # evening meal
+    if rng.random() < 0.2:
+        for h in (13, 14, 15):
+            p[h - 6] = S("public_indoor", "library")
     return [list(s) for s in p]
 
 
 class RulePlanner:
     name = "rules"
 
-    def __init__(self, world):
+    def __init__(self, world, avoid=None):
         self.w = world
+        self.avoid_cancel, self.avoid_shift, self.vuln_stay = avoid or AVOID
 
     def plan(self, r, scenario, slots, intensity, attempt=0):
         hz, iv = scenario["hazard"], scenario["intervention"]
         rng = random.Random(f"{r['id']}-{hz}-{attempt}")
-        p = _template(r, rng)
+        p = baseline_day(r, hz, rng)
+        # make the diary day fit this resident's places: closed places -> home, long trips get a travel hour
+        prev = slots["home"]
+        for i, (a, s_, w) in enumerate(p):
+            place = slots.get(s_)
+            if place is None or (a != "commute" and not is_open(place, s_, HOURS[i], None)):
+                p[i], place = ["home" if r["role"] != "unhoused" else "outdoors_unsheltered", "home", w], slots["home"]
+            mins, _ = travel(r, prev, place)
+            if mins > 30 and p[i][0] != "commute" and (i == 0 or p[i - 1][0] != "commute"):
+                p[i] = ["commute", p[i][1], "commute"]
+            prev = place
         older = r["age"] in ("65-74", "75+")
         vuln = r["vulnerable"]
 
@@ -180,7 +140,7 @@ class RulePlanner:
         elif hz == "smoke":
             danger = {h for h in HOURS if I[h] >= (150 if vuln else 200)}
         elif hz == "flood":
-            danger = {h for h in HOURS if I[h] >= 0.6}
+            danger = {h for h in HOURS if I[h] >= 0.5}
         else:
             danger = {h for h in HOURS if I[h] <= (25 if vuln else 15)}
 
@@ -193,8 +153,9 @@ class RulePlanner:
         # 1) optional outdoor activities during dangerous hours. Aware people mostly *shift* to a safer hour rather
         # than cancel (calibrated against Philadelphia hot-day mobility, see scripts/validate.py); some go anyway.
         u_avoid = rng.random()
-        style = "cancel" if u_avoid < AVOID_CANCEL else "shift" if u_avoid < AVOID_CANCEL + AVOID_SHIFT else "go"
-        if vuln and style == "go":
+        style = ("cancel" if u_avoid < self.avoid_cancel else "shift" if u_avoid < self.avoid_cancel + self.avoid_shift
+                 else "go")
+        if vuln and style == "go" and self.vuln_stay:
             style = "cancel"
         for h in sorted(danger):
             a, s, _ = at(h)

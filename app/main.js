@@ -3,7 +3,6 @@
   const HAZARD_COLOR = { heat: "#f2994a", smoke: "#9b8d7a", flood: "#4c8dff", cold: "#7fc8ff" };
   const LEVEL_RGB = [[47, 143, 122], [242, 201, 76], [242, 153, 74], [235, 77, 91]];
   const LEVEL_NAME = ["Safe", "Caution", "Danger", "Extreme"];
-  const REFUGE_NAME = { heat: "Cooling center", smoke: "Clean-air center", flood: "Shelter", cold: "Warming center" };
   const ACT = {
     sleep: ["Sleep", "z"], home: ["Home", "⌂"], commute: ["Travel", "→"], work_indoor: ["Work", "W"],
     work_outdoor: ["Work outside", "⚒"], class: ["Class", "C"], errand: ["Errand", "$"],
@@ -22,15 +21,14 @@
   };
 
   const state = {
-    hazard: "heat", level: "severe", iv: "none", site: "huntingpark",
+    hazard: "heat", level: "severe", iv: "none",
     t: 6, playing: true, speed: 0.5, selected: null, group: null,
   };
   let M, roads = [], water = [], deckOverlay, map, run, baseRun, frame = 0, lastTs = 0;
   const runCache = new Map();
   const jitter = [];
 
-  const sid = (iv = state.iv) =>
-    `${state.hazard}_${state.level}_${iv}${iv === "refuge" ? "_" + state.site : ""}`;
+  const sid = (iv = state.iv) => `${state.hazard}_${state.level}_${iv}`;
 
   async function loadRun(id) {
     if (!runCache.has(id)) runCache.set(id, fetch(`data/runs/${id}.json`).then((r) => r.json()).then(decode));
@@ -64,11 +62,9 @@
     seg($("#hazard-seg"), Object.entries(M.hazards).map(([k, v]) => [k, v.label]), state.hazard, (k) => {
       state.hazard = k; if (!M.hazards[k].interventions[state.iv]) state.iv = "none"; update();
     });
-    seg($("#level-seg"), Object.entries(hz.levels).map(([k, v]) => [k, v.label]), state.level, (k) => { state.level = k; update(); });
+    seg($("#level-seg"), Object.entries(hz.levels).map(([k, v]) => [k, v.label.split(" — ")[0]]), state.level, (k) => { state.level = k; update(); });
+    [...$("#level-seg").children].forEach((b, i) => { const v = Object.values(hz.levels)[i]; b.title = `${v.label.split(" — ")[1]} · ${v.note}`; });
     seg($("#iv-seg"), Object.entries(hz.interventions).map(([k, v]) => [k, v.label]), state.iv, (k) => { state.iv = k; update(); });
-    const ss = $("#site-select");
-    ss.hidden = state.iv !== "refuge";
-    ss.innerHTML = Object.entries(M.sites).map(([k, v]) => `<option value="${k}" ${k === state.site ? "selected" : ""}>${v.label}</option>`).join("");
   }
 
   async function update() {
@@ -83,10 +79,10 @@
   }
 
   function renderBadge() {
-    const hz = M.hazards[state.hazard], iv = hz.interventions[state.iv];
-    const site = state.iv === "refuge" ? ` Site: <b style="display:inline">${M.sites[state.site].label}</b>.` : "";
-    $("#iv-badge").innerHTML = `<b>${hz.label} · ${hz.levels[state.level].label} · ${iv.label}</b>` +
-      `<span class="muted">${iv.desc ? iv.desc.replace(/ at the chosen site\.?/, ".") : "Baseline: no city response beyond today's normal services."}${site}</span>`;
+    const hz = M.hazards[state.hazard], iv = hz.interventions[state.iv], lv = hz.levels[state.level];
+    $("#iv-badge").innerHTML = `<b>${hz.label} · ${lv.label} · ${iv.label}</b>` +
+      `<span class="muted">Real hourly record for ${lv.label.split(" — ")[1]}: ${lv.note}. ` +
+      `${iv.desc || "Baseline: no city response beyond today's normal services."}</span>`;
     $("#history").textContent = hz.history;
     $("#history-eyebrow").textContent = `${hz.label} · compare`;
   }
@@ -149,15 +145,16 @@
         `<td class="${v === best && v < vals[0] ? "best" : ""} ${ivs[i] === state.iv ? "cur" : ""}">${v.toFixed(1)}</td>`).join("")}</tr>`;
     }).join("");
     $("#matrix").innerHTML = `<table><thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table>
-      <p class="hint">Refuge column uses ${M.sites[state.site].label}. Green = best option for that group.</p>`;
+      <p class="hint">Refuges are the city's real designated sites at their posted hours. Green = best option for that group.</p>`;
   }
 
   function renderProvenance() {
     const v = run.verifier, pct = ((v.rejected / v.drafts) * 100).toFixed(1);
     const types = new Set(M.residents.map((r) => r.type)).size;
     $("#provenance").innerHTML = `
-      <div><b>${M.residents.length.toLocaleString()}</b> synthetic residents · <b>${types}</b> persona types, drawn from <b>ACS 2024</b> tract data</div>
-      <div><b>${M.places.length.toLocaleString()}</b> real places from OpenStreetMap</div>
+      <div><b>${M.residents.length.toLocaleString()}</b> synthetic residents · <b>${types}</b> persona types, from <b>ACS 2024</b>, <b>RECS 2020</b> and <b>CDC PLACES</b></div>
+      <div>Each resident's weekday is a real <b>ATUS</b> diary; the hazard is the real hourly record for <b>${M.hazards[state.hazard].levels[state.level].label.split(" — ")[1]}</b></div>
+      <div><b>${M.places.length.toLocaleString()}</b> real places (OpenStreetMap + ${M.refuges.length} city cooling / warming sites), FEMA 2023 flood zones</div>
       <div>Planner: <b>${run.planner === "rules" ? "rule-based (offline)" : "Claude + rules fallback"}</b> · choices limited to a fixed schema</div>
       <div>Plausibility verifier rejected <b>${v.rejected}</b> of ${v.drafts.toLocaleString()} drafted days (${pct}%) and regenerated them</div>
       <div>Exposure is computed deterministically: hazard × time outdoors × AC/heat/filtration where they are</div>`;
@@ -179,12 +176,12 @@
     const [, , uhi, flood, wind] = cell;
     switch (state.hazard) {
       case "heat": {
-        // overall heat sets the strength; the heat-island offset (-3..+4 °F) shows where it's worst
-        const a = Math.max(0, Math.min(1, (I - 84) / 26)), u = (uhi + 3) / 7;
+        // overall heat sets the strength; the city's Heat Exposure Index offset (-4..+4 °F) shows where it's worst
+        const a = Math.max(0, Math.min(1, (I - 84) / 26)), u = (uhi + 4) / 8;
         return [240, 140 - 100 * u, 60 - 40 * u, a * (10 + 120 * u * u)];
       }
       case "smoke": { const a = Math.max(0, Math.min(1, (I - 50) / 350)); return [150, 130, 105, 12 + 85 * a + 8 * uhi]; }
-      case "flood": return flood ? [60, 130, 255, Math.min(140, 18 + 38 * I)] : [0, 0, 0, 0];
+      case "flood": return flood ? [60, 130, 255, flood * Math.min(150, 30 + 45 * I)] : [0, 0, 0, 0];
       case "cold": { const v = I - wind, a = Math.max(0, Math.min(1, (32 - v) / 50)); return [120, 190, 255, 8 + 55 * a + (wind ? 35 : 0)]; }
     }
   }
@@ -192,10 +189,14 @@
   function layers() {
     const t = state.t, I = intensityAt(t), n = M.residents.length;
     const sel = state.selected, grp = state.group;
-    const refugeIds = state.iv === "refuge" ? [state.site] : [];
-    const sites = Object.entries(M.sites).map(([k, s]) => {
-      const p = M.placeById[s.place_id];
-      return { key: k, label: s.label.split(" (")[0], pos: [p[4], p[3]], on: refugeIds.includes(k) };
+    // the city's real cooling / warming network; "on" when this scenario opens it, labelled with who is there now
+    const kind = state.hazard === "cold" ? "warming" : "cooling";
+    const open = state.iv === "refuge" || (state.hazard === "heat" && state.iv === "transit") || state.iv === "outreach";
+    const here = new Map(), H = M.hours.length, h = Math.min(Math.floor(t - 6), H - 1);
+    for (let i = 0; i < n; i++) if (M.activities[run.act[i * H + h]] === "refuge") here.set(run.place[i * H + h], (here.get(run.place[i * H + h]) || 0) + 1);
+    const sites = M.refuges.filter((s) => state.hazard === "flood" || s[kind]).map((s) => {
+      const idx = M.placeIndex[s.id];
+      return { label: s.name, pos: [s.lon, s.lat], on: open, count: here.get(idx) || 0 };
     });
     return [
       new deck.SolidPolygonLayer({
@@ -212,17 +213,18 @@
       }),
       new deck.ScatterplotLayer({
         id: "sites", data: sites, getPosition: (d) => d.pos, stroked: true, filled: true,
-        getRadius: (d) => (d.on ? 260 : 140), radiusMinPixels: 6, lineWidthMinPixels: 2,
+        radiusMinPixels: 4, lineWidthMinPixels: 1.5,
         getFillColor: (d) => (d.on ? [90, 209, 230, 60] : [255, 255, 255, 10]),
         getLineColor: (d) => (d.on ? [90, 209, 230, 255] : [139, 149, 167, 150]),
-        updateTriggers: { getRadius: state.site + state.iv, getFillColor: state.site + state.iv, getLineColor: state.site + state.iv },
+        getRadius: (d) => (d.on ? 120 + 25 * Math.sqrt(d.count) : 90),
+        updateTriggers: { getRadius: frame, getFillColor: state.hazard + state.iv, getLineColor: state.hazard + state.iv },
       }),
       new deck.TextLayer({
-        id: "site-labels", data: sites.filter((s) => s.on || state.iv === "refuge"), getPosition: (d) => d.pos,
-        getText: (d) => (d.on ? `${REFUGE_NAME[state.hazard]} · ${d.label}` : d.label), getSize: (d) => (d.on ? 13 : 11),
-        getColor: (d) => (d.on ? [210, 245, 252, 255] : [139, 149, 167, 200]), getPixelOffset: [0, -20],
+        id: "site-labels", data: sites.filter((s) => s.count > 0), getPosition: (d) => d.pos,
+        getText: (d) => `${d.label} · ${d.count}`, getSize: 12,
+        getColor: [210, 245, 252, 255], getPixelOffset: [0, -18],
         fontFamily: "Inter, sans-serif", fontWeight: 600, outlineWidth: 3, outlineColor: [11, 14, 19, 230],
-        fontSettings: { sdf: true }, updateTriggers: { getText: state.hazard + state.site, getColor: state.site, getSize: state.site },
+        fontSettings: { sdf: true }, updateTriggers: { getText: frame },
       }),
       new deck.ScatterplotLayer({
         id: "residents", data: { length: n }, pickable: true,
@@ -316,7 +318,8 @@
       <div class="chips">${groups.map((g) => `<span class="chip hot">${M.groups[g]}</span>`).join("")}
         ${traits.map((t) => `<span class="chip">${t}</span>`).join("")}
         <span class="chip">${flags & 1 ? "heard the warning" : "missed the warning"}</span></div>
-      <div class="trace">Traces to <b>${r.source}</b><ul>${Object.values(r.trace).map((t) => `<li>${t}</li>`).join("")}</ul></div>
+      <div class="trace">Traces to <b>${r.source}</b><ul>${Object.entries(r.trace)
+        .filter(([k]) => k !== (state.hazard === "cold" ? "day_summer" : "day_winter")).map(([, t]) => `<li>${t}</li>`).join("")}</ul></div>
       ${state.iv !== "none" ? `<div class="tl-label"><span>If the city did nothing</span><span>${bdh} dangerous h</span></div>${timeline(base)}` : ""}
       <div class="tl-label"><span>${state.iv === "none" ? "Their day" : "With " + M.hazards[state.hazard].interventions[state.iv].label}</span><span>${dh} dangerous h</span></div>
       ${timeline(rows)}
@@ -413,15 +416,20 @@
       <p class="muted">${v.notes}</p>`;
   }
   function showMethods() {
-    const a = M.assumptions;
+    const row = ([k, v]) => `<tr><td><code>${k}</code></td><td>${typeof v.value === "object" ? JSON.stringify(v.value) : v.value}</td><td>${v.source}</td></tr>`;
+    const lv = Object.entries(M.hazards).map(([, h]) => `<tr><td>${h.label}</td>${Object.values(h.levels).map((l) => `<td>${l.label.split(" — ")[1]}</td>`).join("")}</tr>`).join("");
     openModal(`<h2>Methods</h2>
-      <p><b>World.</b> ${M.places.length.toLocaleString()} real places in Center City, University City and North Philadelphia from OpenStreetMap (Overpass), plus roads and waterways. Flood-prone = within ~220 m of a river/creek or at a documented Ida flood spot (I-676). Heat-island offset = fewer parks nearby → hotter; riverside → cooler.</p>
-      <p><b>People.</b> ${M.residents.length.toLocaleString()} synthetic residents sampled from ${new Set(M.residents.map((r) => r.tract)).size} Census tracts (ACS 2024 5-year via Census Reporter): age, college enrollment, vehicle access, 65+ living alone, poverty, outdoor-heavy occupations. 60 unsheltered residents are placed in Kensington and Center City (oversampled; group averages are per person).</p>
-      <p><b>Behavior.</b> Each hour's activity comes from a fixed list and each place from a fixed set of real map places. Generated offline in batch, either by the rule planner (ATUS-style day templates + hazard behavior rules) or by Claude constrained by a JSON schema of enums. A plausibility verifier rejects impossible days (closed places, trips that don't fit in an hour, unhoused "at home") and regenerates them.</p>
-      <p><b>Exposure.</b> Deterministic: hourly hazard intensity × share of the hour outdoors × the indoor environment where the resident is (AC, heat, HEPA, flood-prone ground floor). Danger thresholds follow NWS heat index, EPA AQI and wind-chill categories, tightened for older adults, people with asthma/COPD and unhoused residents.</p>
-      <p><b>Assumptions not yet tied to a dataset:</b></p>
-      <table>${Object.entries(a).map(([k, v]) => `<tr><td><code>${k}</code></td><td>${v.value}</td><td>${v.source}</td></tr>`).join("")}</table>
-      <p class="muted">Generated ${M.generated}. All data public; no IRB dependency.</p>`);
+      <p><b>Hazard days are real.</b> Each level replays one real day, hour by hour: the median event day, a top-5% event day and the worst day on record. Heat index and wind chill come from NOAA hourly observations at PHL (2010–2024); rain is the trailing 3-hour total at PHL; smoke is the EPA PM2.5 NowCast AQI averaged over Philadelphia County monitors (2023).</p>
+      <table><tr><th></th><th>Typical</th><th>Severe</th><th>Record</th></tr>${lv}</table>
+      <p><b>World.</b> ${M.places.length.toLocaleString()} real places from OpenStreetMap plus the city's ${M.refuges.length} open cooling / warming sites and their posted hours (City of Philadelphia open data). Flood zones are FEMA's 2023 map; local heat is the city's 2023 Heat Exposure Index.</p>
+      <p><b>People.</b> ${M.residents.length.toLocaleString()} synthetic adults sampled from ${new Set(M.residents.map((r) => r.tract)).size} Census tracts: age, employment and occupation, college enrollment, poverty, cars and living alone come from ACS 2024 tract tables; AC and heating access from EIA RECS 2020 (Pennsylvania, by poverty); asthma / COPD from CDC PLACES tract estimates. Unhoused residents are placed in Kensington and Center City and oversampled.</p>
+      <p><b>Days are real.</b> Each housed resident's ordinary weekday is a real American Time Use Survey diary (2018–2024) from a respondent with the same role and age group, Philadelphia metro first, then other Northeast metro areas (summer diaries for heat, smoke and flood; winter diaries for cold). No survey covers unsheltered days, so theirs is a schedule around meal programs and library hours.</p>
+      <p><b>Behavior.</b> Hazard rules change the diary day (warnings, avoiding outdoor time, refuges, flood driving). Their free parameters are fit to Philadelphia hot-day mobility (Google, 2020–21) and checked on 2022. Every hour stays inside a fixed list of activities and real places; a plausibility verifier rejects impossible days. The same schema constrains Claude when it plans instead of the rules.</p>
+      <p><b>Exposure.</b> Deterministic: hourly hazard × share of the hour outdoors × the indoor environment where the resident is (AC, heat, HEPA, flood zone). Danger thresholds follow NWS heat index, EPA AQI and wind-chill categories, tightened for older adults, people with asthma / COPD and unhoused residents.</p>
+      <p><b>Data sources</b></p><table>${Object.entries(M.sources).map(row).join("")}</table>
+      <p><b>Still assumed</b> (no dataset found): indoor temperatures and filtration by home type, the Heat Exposure Index → °F scale (1 unit = 1°F), flood-zone weights, riverfront wind, warning awareness (~55%) and refuge travel limits. Plus:</p>
+      <table>${Object.entries(M.assumptions).map(row).join("")}</table>
+      <p class="muted">Generated ${M.generated}. All data public.</p>`);
   }
 
   // ---------- loop ----------
@@ -438,7 +446,7 @@
 
   async function init() {
     M = await fetch("data/meta.json").then((r) => r.json());
-    M.placeById = Object.fromEntries(M.places.map((p) => [p[0], p]));
+    M.placeIndex = Object.fromEntries(M.places.map((p, i) => [p[0], i]));
     const g = M.grid.step / 2;
     for (const c of M.grid.cells) c.poly = [[c[1] - g, c[0] - g], [c[1] + g, c[0] - g], [c[1] + g, c[0] + g], [c[1] - g, c[0] + g]];
     for (let i = 0; i < M.residents.length; i++) {
@@ -452,7 +460,6 @@
     $("#play").onclick = () => { state.playing = !state.playing; $("#play").classList.toggle("playing", state.playing); };
     $("#play").classList.add("playing");
     $("#speed").onchange = (e) => { state.speed = +e.target.value; };
-    $("#site-select").onchange = (e) => { state.site = e.target.value; update(); };
     $("#btn-feature").onclick = featured;
     window.swelter = { state, select: (i) => { state.selected = i; renderInspector(); redraw(); }, featured };
     $("#insp-close").onclick = () => { state.selected = null; $("#inspector").hidden = true; redraw(); };

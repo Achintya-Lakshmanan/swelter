@@ -1,4 +1,8 @@
-"""The map side of the simulation: real OSM places, spatial lookups, and per-location hazard modifiers."""
+"""The map side of the simulation: real OSM places, spatial lookups, and per-location hazard modifiers.
+
+Flood zones are FEMA's 2023 flood map and heat is the city's 2023 Heat Exposure Index (both City of Philadelphia
+open data, prepared by scripts/derive_inputs.py). City cooling/warming sites are added as places.
+"""
 import json
 import math
 import pathlib
@@ -13,13 +17,12 @@ M_PER_DEG_LON = 111_320 * math.cos(math.radians(39.98))
 HOME_KINDS = {"apartment", "residential", "dorm"}
 WORK_INDOOR_KINDS = {"office", "campus", "health", "shop", "food", "mall", "grocery", "school", "civic"}
 
-# Ida-era flood hot spots that are not next to a mapped waterway (approximate segment endpoints).
-# Source: Sept 2021 news/PennDOT reports of I-676 trench flooding.
-FLOOD_SEGMENTS = [
-    ("I-676 Vine St Expressway", (39.9580, -75.1745), (39.9567, -75.1520)),
-]
+# FEMA zone -> share of the hazard felt there: 1% annual chance (incl. floodway) vs 0.2% annual chance (assumed weights)
+FLOOD_WEIGHT = {"floodway": 1.0, "1pct": 1.0, "0.2pct": 0.6}
+# Heat Exposure Index is a standardized score (about -5..+5 across the city); 1 unit is taken as 1°F of heat index.
+HEI_F_PER_UNIT, HEI_CAP_F = 1.0, 4.0
 
-# Opening hours (inclusive start, exclusive end) by place kind. Refuge sites override this.
+# Opening hours (inclusive start, exclusive end) by place kind. Refuge sites use their posted hours instead.
 HOURS_OPEN = {
     "library": (10, 18), "community_centre": (9, 17), "grocery": (7, 23), "shop": (8, 22),
     "food": (7, 23), "mall": (10, 21), "campus": (7, 23), "office": (7, 20), "health": (0, 24),
@@ -30,6 +33,28 @@ HOURS_OPEN = {
 
 def dist_m(a_lat, a_lon, b_lat, b_lon):
     return math.hypot((a_lat - b_lat) * M_PER_DEG_LAT, (a_lon - b_lon) * M_PER_DEG_LON)
+
+
+def _in_rings(lon, lat, rings):
+    """Even-odd point-in-polygon over all rings (outer + holes)."""
+    inside = False
+    for ring in rings:
+        j = len(ring) - 1
+        for i in range(len(ring)):
+            xi, yi = ring[i]
+            xj, yj = ring[j]
+            if (yi > lat) != (yj > lat) and lon < (xj - xi) * (lat - yi) / (yj - yi) + xi:
+                inside = not inside
+            j = i
+    return inside
+
+
+def _polygon_value(polys, lat, lon, key):
+    for p in polys:
+        b = p["bbox"]
+        if b[0] <= lon <= b[2] and b[1] <= lat <= b[3] and _in_rings(lon, lat, p["rings"]):
+            return p[key]
+    return None
 
 
 def _seg_dist_m(p, a, b):
@@ -50,9 +75,14 @@ class World:
         places = json.loads((DATA / "places.json").read_text())
         self.water = json.loads((DATA / "waterways.json").read_text())
         self.tracts = json.loads((DATA / "tracts.json").read_text())
+        self.flood_zones = json.loads((DATA / "flood_zones.json").read_text())
+        self.heat_polys = json.loads((DATA / "heat_exposure.json").read_text())
+        self.refuges = json.loads((DATA / "inputs.json").read_text())["refuges"]
         self._delaware = sorted((c for w in self.water if w["name"] == "Delaware River" for c in w["coords"]))
         # Drop anything east of the Delaware (Camden, NJ) — outside Philadelphia.
         self.places = [p for p in places if not self._east_of(self._delaware, p["lat"], p["lon"])]
+        self.places += [{"id": r["id"], "kind": "refuge_site", "name": r["name"], "lat": r["lat"], "lon": r["lon"], "ac": 1.0}
+                        for r in self.refuges]
         self.by_id = {p["id"]: p for p in self.places}
         self.grid = defaultdict(list)
         for p in self.places:
@@ -111,28 +141,30 @@ class World:
             self._river_cache[key] = best
         return self._river_cache[key]
 
-    def flood_prone(self, lat, lon):
-        """True near rivers/creeks or at known flash-flood spots (proxy for FEMA flood zones)."""
+    def flood_zone(self, lat, lon):
+        """FEMA 2023 zone at this point: 'floodway', '1pct', '0.2pct' or None."""
         key = (round(lat, 4), round(lon, 4))
         if key not in self._flood_cache:
-            hit = self.river_dist(lat, lon) < 220
-            if not hit:
-                hit = any(_seg_dist_m((lat, lon), a, b) < 120 for _, a, b in FLOOD_SEGMENTS)
-            self._flood_cache[key] = hit
+            self._flood_cache[key] = _polygon_value(self.flood_zones, lat, lon, "zone")
         return self._flood_cache[key]
 
+    def flood_weight(self, lat, lon):
+        return FLOOD_WEIGHT.get(self.flood_zone(lat, lon), 0.0)
+
+    def flood_prone(self, lat, lon):
+        return self.flood_zone(lat, lon) is not None
+
     def heat_island(self, lat, lon):
-        """°F added to heat index. Proxy for tree canopy / impervious surface: few parks nearby = hotter,
-        riverside = cooler. Range roughly -3..+4. (Swap for Landsat land-surface temperature later.)"""
+        """°F added to the airport heat index here, from the city's Heat Exposure Index (0 outside its polygons)."""
         key = (round(lat, 3), round(lon, 3))
         if key not in self._uhi_cache:
-            parks = len(self.nearby(lat, lon, 450, {"park"}))
-            mod = 4.0 - 1.0 * min(parks, 5)
-            if self.river_dist(lat, lon) < 400:
-                mod -= 2.0
-            self._uhi_cache[key] = round(mod, 1)
+            hei = _polygon_value(self.heat_polys, lat, lon, "hei")
+            if hei is None:  # outside every scored tract: use the nearest one
+                hei = min(self.heat_polys, key=lambda q: dist_m(lat, lon, (q["bbox"][1] + q["bbox"][3]) / 2,
+                                                                 (q["bbox"][0] + q["bbox"][2]) / 2))["hei"]
+            self._uhi_cache[key] = round(max(-HEI_CAP_F, min(HEI_CAP_F, HEI_F_PER_UNIT * hei)), 1)
         return self._uhi_cache[key]
 
     def wind_exposure(self, lat, lon):
-        """°F subtracted from wind chill on open riverfront."""
+        """°F subtracted from wind chill on open riverfront (assumed)."""
         return 5.0 if self.river_dist(lat, lon) < 300 else 0.0

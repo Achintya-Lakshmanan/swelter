@@ -16,7 +16,18 @@ out geom tags;
 
 # ACS 5-year tract tables for Philadelphia County via Census Reporter (the Census API now needs a key).
 CR_URL = "https://api.censusreporter.org/1.0/data/show/latest?table_ids={tables}&geo_ids=140|05000US42101"
-CR_TABLES = ["B01001", "B08201", "B11007", "B17001", "B14001", "B08301", "B19013", "C24010"]
+CR_TABLES = ["B01001", "B08201", "B11007", "B17001", "B14001", "B08301", "B19013", "C24010", "B23001"]
+# C24010 occupation columns (male, female) grouped like the ATUS roles in scripts/atus.py
+OCC = {
+    "healthcare": [16, 20, 52, 56],
+    "outdoor": [25, 31, 32, 33, 36, 37, 61, 67, 68, 69, 72, 73],  # grounds, farming, construction, repair, transport
+    "service": [21, 24, 26, 28, 35, 57, 60, 62, 64, 71],  # protective, food, personal care, sales, production
+}
+# B23001 age-group blocks: first column of each block (total), employed is first + 4
+WORKING_AGE = [*range(10, 67, 7), *range(96, 153, 7)]  # 20-64, both sexes (16-19 excluded: residents are adults)
+OLDER = [73, 78, 83, 159, 164, 169]  # 65-69, 70-74, 75+
+AGE_BANDS = {"18-24": [7, 8, 9, 10], "25-44": [11, 12, 13, 14], "45-64": [15, 16, 17, 18, 19],
+             "65-74": [20, 21, 22], "75+": [23, 24, 25]}  # B01001 male columns; female = +24
 GAZ_URL = "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/2024_gaz_tracts_42.txt"
 
 
@@ -73,25 +84,37 @@ def main():
         pop = v("B01001001")
         if pop < 200:
             continue
-        p65 = sum(v(f"B01001{i:03d}") for i in [*range(20, 26), *range(44, 50)])
+        ages = {k: sum(v(f"B01001{i:03d}") + v(f"B01001{i + 24:03d}") for i in cols) for k, cols in AGE_BANDS.items()}
+        adults = max(sum(ages.values()), 1)
+        p65 = ages["65-74"] + ages["75+"]
         hh = max(v("B08201001"), 1)
         workers = max(v("B08301001"), 1)
         employed = max(v("C24010001"), 1)
         income = v("B19013001")
+        occ = {k: sum(v(f"C24010{c:03d}") for c in cols) / employed for k, cols in OCC.items()}
+
+        def emp_rate(blocks):
+            tot = sum(v(f"B23001{b:03d}") for b in blocks)
+            return sum(v(f"B23001{b + (2 if b in OLDER else 4):03d}") for b in blocks) / tot if tot else 0
         tracts.append({
             "geoid": geoid,
             "name": acs["geography"][cr_id]["name"].split(",")[0],
             "lat": lat, "lon": lon,
             "pop": int(pop),
             "share_65plus": round(p65 / pop, 3),
+            "adult_age_shares": {k: round(x / adults, 3) for k, x in ages.items()},
+            "share_65plus_alone": round(min(1, v("B11007003") / max(p65, 1)), 3),
+            "emp_rate_20_64": round(emp_rate(WORKING_AGE), 3),
+            "emp_rate_65plus": round(emp_rate(OLDER), 3),
+            "occ_shares": {k: round(x, 3) for k, x in occ.items()},
+            "college_per_18_24": round(min(1, (v("B14001008") + v("B14001009")) / max(ages["18-24"], 1)), 3),
             "share_hh_nocar": round(v("B08201002") / hh, 3),
             "share_hh_65alone": round(v("B11007003") / hh, 3),
             "share_poverty": round(v("B17001002") / max(v("B17001001"), 1), 3),
             "share_students": round((v("B14001008") + v("B14001009")) / pop, 3),
             "share_commute_transit": round(v("B08301010") / workers, 3),
             "share_commute_walk": round(v("B08301019") / workers, 3),
-            # construction/maintenance + transport/material moving: the outdoor-heavy occupations
-            "share_outdoor_occ": round((v("C24010030") + v("C24010066") + v("C24010034") + v("C24010070")) / employed, 3),
+            "share_outdoor_occ": round(occ["outdoor"], 3),
             "median_income": int(income) if income and income > 0 else None,
             "source": f"{release}, tract {geoid}",
         })

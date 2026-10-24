@@ -1,57 +1,73 @@
 {
- "title": "Hot-day behavior change, Philadelphia",
- "description": "Real: Google Community Mobility Reports for Philadelphia County, summer weekdays 2020\u20132022, hot days (PHL Tmax \u2265 92\u00b0F, n=44) vs typical days (78\u201388\u00b0F, n=94), compared within the same month. Simulated: the same residents on a moderate heatwave vs a normal summer day.",
+ "title": "Hot-day behavior change, Philadelphia (held-out 2022)",
+ "description": "Real: Google Community Mobility Reports, Philadelphia County, summer weekdays of 2022, hot days (PHL high \u2265 92\u00b0F, n=16) vs typical days (78\u201388\u00b0F, n=30), compared within month. Simulated: the same residents on the real median hot day (2020-07-19) vs the real median typical summer day (2015-09-06). The three behavior parameters were fit on 2020\u201321 only.",
  "y_label": "Change on hot days (percentage points / %)",
  "rows": [
   {
    "key": "parks",
    "label": "Parks",
-   "real": -2.6,
-   "sim": -12.4
+   "real": -3.0,
+   "sim": -1.9
   },
   {
    "key": "residential",
    "label": "Home",
-   "real": -0.1,
-   "sim": 0.6
+   "real": 0.3,
+   "sim": -0.2
   },
   {
    "key": "retail_rec",
    "label": "Retail & rec",
-   "real": -0.4,
-   "sim": 0.0
+   "real": -1.1,
+   "sim": -0.3
   },
   {
    "key": "grocery",
    "label": "Grocery",
-   "real": -0.7,
-   "sim": 0.0
+   "real": -0.9,
+   "sim": -0.3
   },
   {
    "key": "workplaces",
    "label": "Work",
-   "real": -0.5,
+   "real": 0.1,
    "sim": -0.3
   },
   {
    "key": "transit",
    "label": "Transit",
-   "real": -0.6,
-   "sim": -0.4
+   "real": 0.0,
+   "sim": 0.0
   }
  ],
- "mae_pp": 2.0,
- "error_label": "Mean absolute error: 2.0 percentage points across 6 activity categories",
+ "mae_pp": 0.6,
+ "error_label": "Held-out (2022) mean absolute error: 0.6 percentage points across 6 categories",
+ "fit": {
+  "cancel": 0.0,
+  "shift": 0.3,
+  "vuln_stay": false,
+  "train_years": "2020\u201321",
+  "train_mae_pp": 0.4,
+  "n_hot_train": 28
+ },
  "calibration": [
   {
-   "version": "v1 \u00b7 aware residents always cancel outdoor plans",
+   "version": "prototype v1 \u00b7 synthetic day, everyone warned cancels outdoor plans",
    "mae_pp": 5.6
   },
   {
-   "version": "v2 \u00b7 current rules (cancel / shift / go anyway)",
+   "version": "prototype v2 \u00b7 synthetic day, hand-tuned cancel / shift / go",
    "mae_pp": 2.0
+  },
+  {
+   "version": "real data \u00b7 fit on 2020\u201321 (cancel 0%, shift 30%, vulnerable decide like others), train",
+   "mae_pp": 0.4
+  },
+  {
+   "version": "real data \u00b7 same fit, held-out 2022",
+   "mae_pp": 0.6
   }
  ],
  "real_source_short": "Google mobility \u00d7 NOAA",
- "notes": "Caveats: mobility data are from the COVID era (2020\u201322) and measure visits relative to a Jan\u2013Feb 2020 baseline; the simulation measures resident-hours. The sim still over-predicts how much people avoid parks. Next step: ATUS diaries \u00d7 NOAA for time-use validation."
+ "notes": "Caveats: mobility data are from the COVID era (2020\u201322) and measure visits relative to a Jan\u2013Feb 2020 baseline; the simulation measures resident-hours. ATUS diaries from five I-95 metros could not pin down the hot-day change on their own (95% interval spans a 55% drop to a 160% rise in afternoon outdoor leisure), so they set the routines but not the hot-day parameters."
 }
