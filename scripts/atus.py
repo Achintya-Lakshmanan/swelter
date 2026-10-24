@@ -133,7 +133,10 @@ def episodes(people):
 
 
 def hourly(ep):
-    """17 (activity, slot) steps, plus minute totals used by the hot-day analysis."""
+    """17 (activity, slot) steps, the minute each move started, and minute totals for the hot-day analysis.
+
+    dep[i] = minutes after 6am when the respondent set off for hour i's place (the start of the travel episode that
+    led there, within an hour either side), or -1 when hour i's place is the same as hour i-1's or no trip was found."""
     ep.sort()
     cls = [classify(code, where) for _, _, code, where in ep]
     nxt = "home"
@@ -158,7 +161,22 @@ def hourly(ep):
                 share[c] += o
         a, sl = max(share.items(), key=lambda kv: (kv[1], kv[0][1] != "home"))[0] if share else ("home", "home")
         steps.append(ACTIVITY_LIST.index(a) * 20 + SLOT_LIST.index(sl))
-    return steps, dict(mins)
+    moves, here = [], None  # (start minute, destination slot) for every trip or change of place
+    for (s, _, _, _), (a, sl) in zip(ep, cls):
+        if a == "commute" or (here is not None and sl != here):
+            moves.append((s, sl))
+        if a != "commute":
+            here = sl
+    dep = [-1]
+    for i in range(1, len(HOURS)):
+        sl = steps[i] % 20
+        if sl == steps[i - 1] % 20:
+            dep.append(-1)
+            continue
+        lo = (HOURS[i] - 4) * 60
+        cands = [s for s, d in moves if SLOT_LIST.index(d) == sl and lo - 60 <= s < lo + 60]
+        dep.append(min(cands, key=lambda s: abs(s - lo)) - 120 if cands else -1)
+    return steps, dep, dict(mins)
 
 
 def main():
@@ -170,11 +188,11 @@ def main():
     for cid, p in people.items():
         if cid not in eps:
             continue
-        steps, mins = hourly(eps[cid])
+        steps, dep, mins = hourly(eps[cid])
         out.append({
             "id": cid, "date": p["date"], "dow": p["dow"], "w": round(p["w"]), "age": p["age"], "sex": p["sex"],
             "role": role_of(p), "age_group": age_group(p["age"]), "cbsa": p["cbsa"], "region": p["region"],
-            "metro": p["metro"], "steps": steps, "mins": mins,
+            "metro": p["metro"], "steps": steps, "dep": dep, "mins": mins,
         })
     phl = [d for d in out if d["cbsa"] == PHILLY]
     by_role = defaultdict(int)
@@ -182,7 +200,8 @@ def main():
         by_role[d["role"]] += 1
     doc = {
         "source": "BLS American Time Use Survey 2018-2024 (weekday, non-holiday diaries of adults)",
-        "encoding": "steps[i] = activity_index*20 + slot_index for hours 6..22, indices into plan.ACTIVITY_LIST / SLOT_LIST",
+        "encoding": ("steps[i] = activity_index*20 + slot_index for hours 6..22, indices into plan.ACTIVITY_LIST / SLOT_LIST; "
+                     "dep[i] = minutes after 6am the move into hour i's place started, -1 if none"),
         "activities": ACTIVITY_LIST, "slots": SLOT_LIST, "metros": METROS, "diaries": out,
     }
     (DATA / "atus_diaries.json").write_text(json.dumps(doc, separators=(",", ":")))

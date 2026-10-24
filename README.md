@@ -64,7 +64,7 @@ fallbacks enabled; override with `--model`.
 |---|---|---|
 | World | `scripts/swelter/world.py` | OSM places + city refuge sites; FEMA zone and Heat Exposure Index lookups |
 | People | `scripts/swelter/personas.py` | Every attribute keeps a `trace` to the statistic that set it, including the ATUS diary id |
-| Routines | `scripts/atus.py`, `scripts/swelter/diaries.py` | Diary episodes → 17 hourly steps in the simulator's schema; sampled by role, age, season |
+| Routines | `scripts/atus.py`, `scripts/swelter/diaries.py` | Diary episodes → 17 hourly steps in the simulator's schema; sampled by role, age, season. Each move keeps the respondent's real departure minute; the map animates it at walk / car / transit speed (exposure is still scored per hour) |
 | Hazards | `scripts/swelter/hazards.py` | Real hourly days, 4 interventions each, danger thresholds (NWS / EPA / wind chill) |
 | Schema + verifier | `scripts/swelter/plan.py` | Fixed activity list + place slots; rejects closed places, impossible trips, housed "unsheltered", etc. |
 | Rule planner | `scripts/swelter/rules.py` | Diary day + hazard behavior rules; every hour carries a reason code |

@@ -43,7 +43,30 @@
       r.place[k] = Math.floor(s / 1000); r.act[k] = Math.floor((s % 1000) / 40); r.why[k] = s % 40;
       r.lvl[k] = +r.levels[i][h];
     }
+    // trips: [depart, arrive, fromPlace, toPlace] in clock hours. Departures are the diary respondent's real minute
+    // (or early in the hour for moves the hazard rules added); travel time follows the planner's walk/car/transit speeds.
+    r.trips = [];
+    for (let i = 0; i < n; i++) {
+      const trips = [];
+      let free = M.hours[0];
+      for (let h = 1; h < H; h++) {
+        const k = i * H + h;
+        if (r.place[k] === r.place[k - 1]) continue;
+        const dep = Math.max(free, r.dep && r.dep[i][h] >= 0 ? M.hours[0] + r.dep[i][h] / 60 : M.hours[0] + h);
+        const arr = dep + travelMinutes(M.residents[i], M.places[r.place[k - 1]], M.places[r.place[k]]) / 60;
+        trips.push([dep, arr, r.place[k - 1], r.place[k]]);
+        free = arr;
+      }
+      r.trips.push(trips);
+    }
     return r;
+  }
+  // same speeds as plan.travel(): walk under 1.2 km, otherwise car or SEPTA
+  function travelMinutes(res, a, b) {
+    const km = Math.hypot((a[3] - b[3]) * 111.32, (a[4] - b[4]) * 85.3);
+    const older = res.age === "65-74" || res.age === "75+";
+    if (km < 1.2) return Math.max(3, (60 * km) / (older ? 3.2 : 4.5));
+    return Math.min(90, res.car ? (60 * km) / 25 + 4 : (60 * km) / 13 + 8);
   }
 
   // ---------- controls ----------
@@ -161,14 +184,23 @@
   }
 
   // ---------- map ----------
+  const WANDER = { leisure_outdoor: 0.00035, exercise_outdoor: 0.0012, outdoors_unsheltered: 0.00025, work_outdoor: 0.0003 };
   function residentPos(i, t) {
-    const H = M.hours.length, x = Math.min(Math.max(t - 6, 0), H - 0.001), h = Math.floor(x), f = x - h;
-    const k = i * H + h, cur = M.places[run.place[k]], prev = h > 0 ? M.places[run.place[k - 1]] : cur;
-    const commute = M.activities[run.act[k]] === "commute";
-    const dur = commute ? 0.85 : 0.25;
-    let s = Math.min(1, f / dur); s = s * s * (3 - 2 * s);
-    const j = jitter[i];
-    return [prev[4] + (cur[4] - prev[4]) * s + j[0], prev[3] + (cur[3] - prev[3]) * s + j[1]];
+    const H = M.hours.length, j = jitter[i];
+    let at = M.places[run.place[i * H]];
+    for (const [t0, t1, a, b] of run.trips[i]) {
+      if (t < t0) break;
+      if (t < t1) {  // on the way
+        let s = (t - t0) / (t1 - t0); s = s * s * (3 - 2 * s);
+        const p = M.places[a], q = M.places[b];
+        return [p[4] + (q[4] - p[4]) * s + j[0], p[3] + (q[3] - p[3]) * s + j[1]];
+      }
+      at = M.places[b];
+    }
+    // people outdoors don't stand still: a slow loop around where they are (bigger for exercise)
+    const h = Math.min(Math.max(Math.floor(t - 6), 0), H - 1), w = WANDER[M.activities[run.act[i * H + h]]] || 0;
+    const ph = t * 9 + i * 2.39;
+    return [at[4] + j[0] + w * Math.cos(ph) * 1.3, at[3] + j[1] + w * Math.sin(ph * 1.13)];
   }
   const levelAt = (i, t) => run.lvl[i * M.hours.length + Math.min(Math.floor(t - 6), M.hours.length - 1)];
 
@@ -461,7 +493,8 @@
     $("#play").classList.add("playing");
     $("#speed").onchange = (e) => { state.speed = +e.target.value; };
     $("#btn-feature").onclick = featured;
-    window.swelter = { state, select: (i) => { state.selected = i; renderInspector(); redraw(); }, featured };
+    window.swelter = { state, select: (i) => { state.selected = i; renderInspector(); redraw(); }, featured,
+      get run() { return run; }, residentPos };
     $("#insp-close").onclick = () => { state.selected = null; $("#inspector").hidden = true; redraw(); };
     $("#btn-methods").onclick = showMethods;
     $("#btn-validate").onclick = showValidation;

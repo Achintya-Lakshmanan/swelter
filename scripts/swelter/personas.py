@@ -139,15 +139,15 @@ class PersonaBuilder:
         elif role == "student":
             hits = self.w.nearby(home["lat"], home["lon"], 4000, {"campus"})
             work = (r.choice(hits[:15])[1] if hits else None)
-        days = {}
+        days, deps = {}, {}
         for season in ("summer", "winter"):
             d, tier, n = self.diaries.pick(role, age, season, r)
-            days[season] = d["steps"]
+            days[season], deps[season] = d["steps"], d["dep"]
             trace[f"day_{season}"] = self.diaries.describe(d, tier, n)
         return self._finish({
             "id": rid, "name": r.choice(FIRST_NAMES), "age": age, "role": role, "alone": alone,
             "car": car, "ac": ac, "heat": heat, "respiratory": resp, "poverty": poverty,
-            "home": home["id"], "work": work["id"] if work else None, "days": days,
+            "home": home["id"], "work": work["id"] if work else None, "days": days, "deps": deps,
             "tract": t["geoid"], "tract_name": t["name"], "source": t["source"], "trace": trace,
         })
 
@@ -155,7 +155,7 @@ class PersonaBuilder:
         r = self.rng
         return self._finish({
             "id": rid, "name": r.choice(FIRST_NAMES), "age": r.choice(["25-44", "45-64", "45-64", "65-74"]),
-            "role": "unhoused", "alone": True, "car": False, "ac": False, "heat": False, "days": None,
+            "role": "unhoused", "alone": True, "car": False, "ac": False, "heat": False, "days": None, "deps": None,
             "respiratory": r.random() < 0.25, "poverty": True, "home": spot["id"], "work": None,
             "tract": self.w.nearest_tract(spot["lat"], spot["lon"])["geoid"], "tract_name": hub,
             "source": "Philadelphia Point-in-Time count: unsheltered residents concentrated in Kensington & Center City",

@@ -16,7 +16,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))  # swelter pack
 from swelter import hazards as H  # noqa: E402
 from swelter.exposure import score, summarize  # noqa: E402
 from swelter.personas import ASSUMPTIONS, SOURCES, PersonaBuilder  # noqa: E402
-from swelter.plan import ACTIVITY_LIST, bad_hours, repair, resolve_slots, verify  # noqa: E402
+from swelter.diaries import HAZARD_SEASON  # noqa: E402
+from swelter.plan import ACTIVITY_LIST, SLOT_LIST, bad_hours, repair, resolve_slots, verify  # noqa: E402
 from swelter.rules import REASONS, RulePlanner  # noqa: E402
 from swelter.world import DATA, ROOT, World  # noqa: E402
 
@@ -41,6 +42,24 @@ def hazard_grid(world, step=0.0035):
             lon += step
         lat += step
     return {"step": step, "cells": cells}
+
+
+def departures(r, sc, plan):
+    """Minute after 6am each move starts, per hour (-1 = no move). Moves the diary day already had keep the respondent's
+    real departure minute; moves the hazard rules added (refuge trips, delays, unhoused schedule) leave early in the hour."""
+    days = r["days"][HAZARD_SEASON[sc["hazard"]]] if r["days"] else None
+    deps = r["deps"][HAZARD_SEASON[sc["hazard"]]] if r["days"] else None
+    hours = plan["hours"]
+    out = [-1]
+    for i in range(1, len(hours)):
+        if hours[i]["place"] == hours[i - 1]["place"]:
+            out.append(-1)
+        elif days and deps[i] >= 0 and SLOT_LIST[days[i] % 20] == hours[i]["place"] \
+                and SLOT_LIST[days[i - 1] % 20] == hours[i - 1]["place"]:
+            out.append(deps[i])
+        else:
+            out.append(60 * i + (r["id"] * 7 + i * 13) % 20)
+    return out
 
 
 def export_layers():
@@ -100,7 +119,7 @@ def main():
                 verify=lambda rr, p: verify(world, rr, sc, p, slots_by_id[rr["id"]]))
         stats = {"drafts": 0, "rejected": 0, "repaired": 0, "llm_used": 0, "llm_fallback": 0}
         examples = []
-        steps_out, levels_out, flags_out, levels_by = [], [], [], {}
+        steps_out, levels_out, flags_out, deps_out, levels_by = [], [], [], [], {}
         for r in residents:
             slots = slots_by_id[r["id"]]
             plan = None
@@ -145,11 +164,12 @@ def main():
                 pidx(slots[s["place"]]) * 1000 + ACTIVITY_LIST.index(s["activity"]) * 40 + REASON_LIST.index(s["why"])
                 for s in plan["hours"]
             ])
+            deps_out.append(departures(r, sc, plan))
             flags_out.append(int(plan.get("aware", False)) | int(plan.get("ac_use", False)) << 1
                              | int(plan.get("mask", False)) << 2 | int(plan.get("heat_on", False)) << 3)
         summary = summarize(residents, levels_by, H.HAZARDS[sc["hazard"]]["groups"])
         run = {"id": sid, **sc, "planner": "llm+rules" if llm else "rules", "intensity": inten,
-               "steps": steps_out, "levels": levels_out, "flags": flags_out, "summary": summary,
+               "steps": steps_out, "levels": levels_out, "flags": flags_out, "dep": deps_out, "summary": summary,
                "verifier": {**stats, "examples": examples}}
         (OUT / "runs" / f"{sid}.json").write_text(json.dumps(run, separators=(",", ":")))
         a = summary["all"]["all"]
