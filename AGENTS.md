@@ -18,7 +18,7 @@ live "why" explanation. All 48 runs (4 hazards × 3 levels × 4 responses) are p
 ## Run it
 
 ```bash
-uv run server.py            # http://localhost:8000 (map) and /about.html (showcase page)
+SWELTER_DEV_LOGIN=1 uv run --env-file .env server.py   # http://localhost:8000 (map, government sign-in) and /about.html (public)
 ```
 
 Deep links: `/?hazard=smoke&level=extreme&iv=n95` (hazard: heat|smoke|flood|cold; level: moderate|severe|extreme;
@@ -68,7 +68,7 @@ canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
 2. **Live "why" with a key**: check `/api/why` answers with Claude and stays grounded in the resident's facts.
 3. **Research track export**: CSV of a run (one row per resident per hour) plus a short methods note download.
    Not built yet.
-4. **Sponsor keys**: Auth0, Tiger Data, Gemini, Vultr and GoDaddy are wired but need accounts and keys (see `docs/iphone-app.md`). ElevenLabs runs with a real key (start the server with `uv run --env-file .env server.py`).
+4. **Sponsor keys**: Auth0 (tenant dev-ml8dvjy6kigpgvxb), Tiger Data, Gemini, ElevenLabs and Vultr are live. **Live server: https://144-202-2-216.sslip.io/** (Vultr vc2-1c-2gb, New York, $10/mo; `deploy/vultr.sh 144.202.2.216` pushes new code; the URL is in the Auth0 planner app; the phone build points at it via `SWELTER_API_BASE`). GoDaddy is still open: point an A record at the IP and pass that name to `deploy/vultr.sh`.
 5. **Demo**: 2-minute video and slides; demo opens on the map, record heat day, then "Show me someone whose day
    changed".
 6. `image-to-code` skill is installed but needs an image-generation tool, so it was not used.
@@ -113,6 +113,18 @@ canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
 
 ## Resident UI cleanup — Oct 25
 - Removed the resident risk explanation/Listen section and priority-resident button/handler. Direct map-dot inspection remains. The sidebar hint now explains population categories, examples and how to clear the highlight.
+
+## Auth0 gate, Ask chat, SQL store — Oct 25 (branch iphone-app)
+- Merged main's new dashboard into iphone-app. The planner page sits behind the Auth0 government gate (`app/auth.js`;
+  demo account Jordan Ellis with `SWELTER_DEV_LOGIN=1`). Static data files are still public; the gate is the UI and the APIs.
+- **Ask** (top bar): preset demo questions or free text → `POST /api/ask` (government only) → Gemini Flash writes one
+  SQL query (`backend/ask.py`) → `backend/simdb.py` checks it (single SELECT, deny-list, 500-row cap, 8 s) and runs it
+  read-only → Gemini answers from the rows. Answers show model, engine, SQL and rows.
+- Simulation tables (heat/cold × 3 days, 159,120 resident-hours at 1,560 residents): Tiger Data with `DATABASE_URL`
+  (schema `sim`, hypertable on `ts`), else `data/simulation.db`. Loaded on first question or `scripts/load_sql.py`.
+  Not yet run against a real Tiger Data service (no `DATABASE_URL` on this machine).
+- Scaling: `simulate.py --residents 10000` takes ~6 s per run (2.2 MB run JSON, 11 MB meta.json); the browser replay
+  is the limit past ~10–20k, SQL aggregates are not. Scaling also needs `train_shelters.py` re-run for risk matrices.
 
 ## Further sidebar cleanup — Oct 25
 - Removed hourly coverage disclosure/table/note, population-category guidance, historical context paragraph, shelter planning heading/intro and duplicate open-sites action. Standard city hides the empty site section; City response still opens the selected-site list and map markers.

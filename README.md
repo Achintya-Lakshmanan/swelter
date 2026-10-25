@@ -13,10 +13,28 @@ and the city's cooling and warming sites. Remaining assumptions are listed in th
 SWELTER_DEV_LOGIN=1 uv run --env-file .env server.py
 ```
 
-Open http://localhost:8000. The current interface uses trained-model outputs for risk and site coverage. Its explanation action describes those model estimates. The server also retains the older /api/why endpoint for archived simulation workflows.
+Open http://localhost:8000. The planner page is for government accounts: sign in with Auth0
+([docs/auth0-setup.md](docs/auth0-setup.md)) or, with `SWELTER_DEV_LOGIN=1`, the demo account Jordan Ellis. The
+About page (`/about.html`) is public. The current interface uses trained-model outputs for risk and site coverage. Its explanation action describes those model estimates. The server also retains the older /api/why endpoint (government accounts only) for archived simulation workflows.
 
 The normal server serves precomputed ML predictions and rankings; it does not need scikit-learn at runtime.
 The server also serves the iPhone app's API.
+
+## Ask the simulation (Gemini + SQL)
+
+The **Ask** button opens a chat with preset demo questions. Gemini Flash (`GEMINI_API_KEY`) turns the question into
+one read-only SQL query over the simulation tables (`backend/simdb.py`): `residents`, `resident_hours` (one row
+per resident per hour per scenario, with the model's danger probability), `weather`, `sites`, `site_rankings`,
+`coverage`, `groups`, `places`. The server checks the query (one SELECT, no writes, row cap, 8 s limit), runs
+it and Gemini answers from the rows; the answer shows its SQL and data.
+
+The tables go to Tiger Data when `DATABASE_URL` is a Postgres URL (schema `sim`, `resident_hours` as a TimescaleDB
+hypertable on `ts`), else to a local SQLite file `data/simulation.db`. The server loads them on the first question;
+to (re)load by hand:
+
+```bash
+uv run --env-file .env --extra tiger scripts/load_sql.py
+```
 
 ## iPhone app
 

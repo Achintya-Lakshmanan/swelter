@@ -138,7 +138,7 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*a, directory=str(APP), **kw)
 
     def log_message(self, fmt, *args):
-        if "/api/" in (args[0] if args else ""):
+        if "/api/" in str(args[0] if args else ""):  # args[0] is an HTTPStatus when logging an error
             super().log_message(fmt, *args)
 
     def _json(self, code, obj, ctype="application/json"):
@@ -182,6 +182,12 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path != "/api/why":
             return self._api("POST")
+        try:  # the planner page is for government accounts (backend/auth.py)
+            u = api.signed_in(self.headers)
+            if u["role"] != "government":
+                return self._json(403, {"error": "the planner page is for government accounts"})
+        except api.HTTPError as e:
+            return self._json(e.code, {"error": str(e)})
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
             f = facts(str(body["scenario"]), int(body["resident"]))

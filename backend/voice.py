@@ -1,4 +1,4 @@
-"""Spoken alerts and instructions with ElevenLabs text-to-speech (multilingual, so Spanish works too).
+"""Spoken alerts and instructions with ElevenLabs text-to-speech.
 
 Env: ELEVENLABS_API_KEY, optional ELEVENLABS_VOICE_ID and ELEVENLABS_MODEL. Audio is cached by text."""
 import hashlib

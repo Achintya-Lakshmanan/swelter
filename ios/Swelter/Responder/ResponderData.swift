@@ -67,6 +67,10 @@ struct ResponderHeader: View {
             Spacer()
             Toggle("On duty", isOn: $data.onDuty).labelsHidden().tint(Color(hex: 0x1F8A63))
             Menu {
+                Button("I need help: switch to resident view", systemImage: "hand.raised") {
+                    model.residentTab = 1
+                    model.actingAsResident = true
+                }
                 Button("Sign out", role: .destructive) { model.signOut() }
             } label: { Image(systemName: "person.crop.circle").font(.title2) }
         }

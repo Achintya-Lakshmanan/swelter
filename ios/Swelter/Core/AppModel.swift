@@ -22,7 +22,6 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
     var loading = false
 
     // settings (stored)
-    var spanish = UserDefaults.standard.bool(forKey: "spanish") { didSet { UserDefaults.standard.set(spanish, forKey: "spanish") } }
     /// Demo: replay one of the stored record days instead of today. Always labelled on screen.
     var replay: String? = UserDefaults.standard.string(forKey: "replay") { didSet { UserDefaults.standard.set(replay, forKey: "replay") } }
     /// A replay runs on the real clock: the record day's weather at the current hour.
@@ -62,7 +61,11 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
     // who's signed in (resident or responder)
     var account: Me?
     var restoring = true
-    var responderMode: Bool { account?.isResponder == true }
+    /// A volunteer can switch to the resident view to ask for help themselves (and switch back).
+    var actingAsResident = UserDefaults.standard.bool(forKey: "actingAsResident") {
+        didSet { UserDefaults.standard.set(actingAsResident, forKey: "actingAsResident") }
+    }
+    var responderMode: Bool { account?.isResponder == true && !actingAsResident }
     var name: String? { account?.profile?.name }
     var home: Me.Home? { account?.profile?.home }
 
@@ -133,6 +136,7 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
     @MainActor
     func signIn(demo id: String) async {
         activeRequest = nil
+        actingAsResident = false
         API.shared.bearer = nil
         API.shared.demoAccount = id
         UserDefaults.standard.set(id, forKey: "demoAccount")
@@ -142,6 +146,7 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
     @MainActor
     func signIn(token: String) async {
         activeRequest = nil
+        actingAsResident = false
         API.shared.demoAccount = nil
         API.shared.bearer = token
         Keychain.set(token, "auth0")
@@ -151,6 +156,7 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
     func signOut() {
         account = nil
         activeRequest = nil
+        actingAsResident = false
         API.shared.bearer = nil
         API.shared.demoAccount = nil
         Keychain.set(nil, "auth0")
@@ -164,7 +170,7 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
         defer { loading = false }
         do {
             if config == nil { config = try await API.shared.config() }
-            async let l = API.shared.live(replay: replay, hour: replayHour, spanish: spanish)
+            async let l = API.shared.live(replay: replay, hour: replayHour)
             async let s = API.shared.sites(replay: replay, hour: replayHour)
             let (lv, st) = try await (l, s)
             live = lv

@@ -8,7 +8,6 @@ struct AppConfig: Decodable {
     struct DemoAccount: Decodable, Identifiable { let id: String; let role: String; let name: String; let about: String }
     let auth0: Auth0
     let voice: Bool
-    let translate: Bool
     let db: String
     let kMin: Int
     let replayDays: [String: String]
@@ -27,7 +26,6 @@ struct NWSAlert: Decodable, Identifiable {
     var id: String { event + (ends ?? "") }
     let event: String; let headline: String?; let severity: String?; let ends: String?
     let description: String; let instruction: String; let hazard: String?
-    let headlineEs: String?; let instructionEs: String?; let translatedBy: String?
 }
 
 struct Hourly: Decodable { let time: String; let tempF: Int; let short: String }
@@ -127,7 +125,9 @@ struct Me: Decodable {
     struct Home: Codable { let name: String?; let lat: Double; let lon: Double }
     struct Profile: Decodable { let name: String; let phone: String?; let flags: [String]; let home: Home? }
     let sub: String; let role: String; let demo: Bool; let profile: Profile?
+    var name: String?
     var isResponder: Bool { role == "responder" }
+    var isGovernment: Bool { role == "government" }
 }
 
 struct RiskGrid: Decodable {
@@ -215,9 +215,8 @@ final class API {
 
     func config() async throws -> AppConfig { try await get("/api/config") }
 
-    func live(replay: String?, hour: Int?, spanish: Bool) async throws -> Live {
-        try await get("/api/live", ["replay": replay, "hour": replay == nil ? nil : hour.map(String.init),
-                                    "lang": spanish ? "es" : nil])
+    func live(replay: String?, hour: Int?) async throws -> Live {
+        try await get("/api/live", ["replay": replay, "hour": replay == nil ? nil : hour.map(String.init)])
     }
 
     func sites(replay: String?, hour: Int?) async throws -> SitesResponse {

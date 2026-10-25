@@ -29,9 +29,12 @@ forecast this hour" and the responder risk layer is empty with a note, instead o
 
 ## Sign-in and accounts
 
-- One sign-in screen for everyone (Auth0 Universal Login). The server reads the role from the token: an account
-  is a **responder** if an organiser gave it the `respond:requests` permission in Auth0 (RBAC), or its email is in
-  `SWELTER_RESPONDERS`. Everyone else is a **resident**. The app never decides who is a responder.
+- Auth0 Universal Login on the phone and on the planner web page. The server reads the role from the token:
+  **government** with the `view:planner` permission (the planner web page only), **volunteer** (responder) with
+  `respond:requests`, **resident** otherwise. The app never decides roles. Tenant setup, step by step:
+  [auth0-setup.md](auth0-setup.md).
+- A volunteer can ask for help too: account menu › "I need help: switch to resident view"; Settings › "Switch back
+  to volunteer view". Their own request never shows in their own queue.
 - First sign-in asks for a name. Residents can add a home address (geocoded, must be in Philadelphia) and anything
   a helper should know (65+, lives alone, no AC, …), which pre-fills help requests. Responders see only the
   resident's first name until they accept; the exact address and callback number appear after accepting.
@@ -42,6 +45,7 @@ forecast this hour" and the responder risk layer is empty with a note, instead o
     retired, Fairhill (census tract 175), lives alone, no AC, home at Warnock Village. In the simulation she never
     hears the warning and spends 9 AM to 10 PM at extreme danger at home (119 °F heat index at 3 PM).
   - **Marisol Rivera**, responder. A made-up volunteer, no real organisation.
+  - **Jordan Ellis**, government (planner web page only). Made up.
 
 ## Voice (ElevenLabs)
 
@@ -125,17 +129,16 @@ Reset between runs: stop the server, delete `data/swelter.db`, start it again.
 - **Responder location and ETA.** Not tracked by design, so the resident's status shows who accepted and when,
   with no "9 min away". The responder's phone isn't shared either.
 - **Flood depth.** Not in the NWS hourly forecast. Flood days are replay-only (real 3-hour rain at PHL).
-- **Spanish UI.** Only alert text is translated (Gemini); the app's own labels are English.
 
 ## Sponsor tech
 
 | Sponsor | What it does here | Turn it on |
 |---|---|---|
 | **Auth0** | Sign-in for residents and responders: Universal Login with PKCE from the app (`ios/Swelter/Core/Auth0Login.swift`, no SDK; token kept in the Keychain); the server checks RS256 tokens against the tenant's JWKS and reads the responder role (`backend/auth.py`) | Create a Native app and an API (identifier e.g. `https://api.swelter.app`). Allowed callback: `app.swelter.Swelter://<domain>/ios/app.swelter.Swelter/callback`. Set `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_AUDIENCE`. On the API, enable RBAC and "Add Permissions in the Access Token", add a `respond:requests` permission, and give it to responders (directly or through a Responder role) |
-| **Tiger Data** (Timescale) | Presence pings, requests and site reports in Postgres; `presence` becomes a hypertable | `uv sync --extra tiger`, then set `DATABASE_URL` to the Tiger Cloud connection string. Unset = SQLite at `data/swelter.db` |
+| **Tiger Data** (Timescale) | Presence pings, requests and site reports in Postgres (`presence` a hypertable), and the simulation tables the Ask chat queries (schema `sim`, `resident_hours` a hypertable) | Set `DATABASE_URL` to the Tiger Cloud connection string and run with `--extra tiger`. Unset = SQLite at `data/swelter.db` and `data/simulation.db` |
 | **ElevenLabs** | Spoken hourly check-ins, request updates, "Listen" on alerts and on the web "Why?" explainer; audio cached in `data/tts/` | `ELEVENLABS_API_KEY` (optional `ELEVENLABS_VOICE_ID`) |
-| **Gemini** | Spanish translations of NWS alert headlines and instructions, labelled as machine translation | `GEMINI_API_KEY` (optional `GEMINI_MODEL`) |
-| **Vultr** | Hosting: `Dockerfile` runs the API + web demo on port 8000 | On a Vultr Docker instance: `docker build -t swelter . && docker run -d -p 80:8000 --env-file .env swelter` |
+| **Gemini** | The planner page's Ask chat: question → one read-only SQL query over the simulation tables → answer with its SQL and rows (`backend/ask.py`) | `GEMINI_API_KEY` (optional `GEMINI_SQL_MODEL`, default `gemini-3.5-flash`) |
+| **Vultr** | Hosting the planner page and the phone API over HTTPS (Caddy, Let's Encrypt) | On a fresh Ubuntu 24.04 instance with the `~/.ssh/swelter_vultr` key: `deploy/vultr.sh <IP>` → `https://<ip-with-dashes>.sslip.io/`. Then add that URL to the Auth0 planner app's callback, logout and web-origin lists. (A `Dockerfile` is also there, untested) |
 | **GoDaddy** | Domain for the API and demo | Point an A record (e.g. `api.<domain>`) at the Vultr IP; put TLS in front (Caddy or Vultr load balancer), then set `SWELTER_API_BASE=https://api.<domain>` in `ios/project.yml` |
 | **Claude** | The web demo's "Why?" explainer (unchanged) | `ANTHROPIC_API_KEY` |
 

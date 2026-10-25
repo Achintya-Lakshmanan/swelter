@@ -443,5 +443,6 @@
     }
     requestAnimationFrame(tick);
   }
-  init().catch(e=>{ $("#compare-sub").textContent="Unable to load model data: "+e.message+". Reload to retry."; $("#compare-sub").setAttribute("role","alert"); });
+  // Government accounts only (auth.js).
+  swelterAuth.ready.then(init).catch(e=>{ $("#compare-sub").textContent="Unable to load model data: "+e.message+". Reload to retry."; $("#compare-sub").setAttribute("role","alert"); });
 })();

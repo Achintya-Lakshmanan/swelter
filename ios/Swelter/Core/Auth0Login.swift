@@ -22,6 +22,7 @@ final class Auth0Login: NSObject, ASWebAuthenticationPresentationContextProvidin
             .init(name: "redirect_uri", value: redirect), .init(name: "scope", value: "openid profile email"),
             .init(name: "code_challenge", value: challenge), .init(name: "code_challenge_method", value: "S256"),
             .init(name: "state", value: state),
+            .init(name: "prompt", value: "login"),  // always ask, so a shared demo phone can switch accounts
         ] + (audience.map { [.init(name: "audience", value: $0)] } ?? [])
 
         let callback: URL = try await withCheckedThrowingContinuation { cont in

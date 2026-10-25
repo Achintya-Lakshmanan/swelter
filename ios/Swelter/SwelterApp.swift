@@ -10,9 +10,11 @@ struct SwelterApp: App {
                 if model.restoring {
                     ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.bg)
                 } else if let a = model.account {
-                    if a.profile == nil {
+                    if a.isGovernment {
+                        GovernmentNotice()  // the planner is the web page
+                    } else if a.profile == nil {
                         ProfileSetup()
-                    } else if a.isResponder {
+                    } else if model.responderMode {
                         ResponderTabs()
                     } else {
                         ResidentTabs()

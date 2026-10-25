@@ -209,16 +209,15 @@ struct AlertDetail: View {
                         ForEach(live.alerts) { a in
                             Card {
                                 Text(a.event).font(.title3.bold())
-                                if let h = model.spanish ? (a.headlineEs ?? a.headline) : a.headline { Text(h).font(.subheadline.weight(.semibold)) }
-                                let instr = model.spanish ? (a.instructionEs ?? a.instruction) : a.instruction
-                                if !instr.isEmpty { Text(instr) }
-                                if !model.spanish || a.headlineEs == nil { Text(a.description).font(.callout).foregroundStyle(Color.muted) }
-                                SourceLine(text: "National Weather Service" + (model.spanish && a.translatedBy != nil ? " · translated by \(a.translatedBy!)" : ""))
+                                if let h = a.headline { Text(h).font(.subheadline.weight(.semibold)) }
+                                if !a.instruction.isEmpty { Text(a.instruction) }
+                                Text(a.description).font(.callout).foregroundStyle(Color.muted)
+                                SourceLine(text: "National Weather Service")
                                 if model.config?.voice == true {
                                     Button {
                                         speaking = true
                                         Task {
-                                            await model.speak([a.event, model.spanish ? a.headlineEs : a.headline, instr].compactMap { $0 }.joined(separator: ". "))
+                                            await model.speak([a.event, a.headline, a.instruction].compactMap { $0 }.joined(separator: ". "))
                                             speaking = false
                                         }
                                     } label: { Label(speaking ? "Loading…" : "Listen", systemImage: "speaker.wave.2.fill") }

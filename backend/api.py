@@ -2,7 +2,7 @@
 
 Public:
   GET  /api/config                      Auth0 settings, demo accounts, which sponsor features are switched on
-  GET  /api/live[?lang=es][&replay=heat_extreme&hour=15]
+  GET  /api/live[?replay=heat_extreme&hour=15]
   GET  /api/sites[?replay=…&hour=…]     city sites + crowd level (site lead > phones, k≥5 > Swelter forecast)
   POST /api/presence                    {site_id, event: enter|exit, token}
   POST /api/requests                    {need, flags[], people, lat, lon, callback?, note?} → {id, secret}
@@ -11,19 +11,22 @@ Public:
   POST /api/requests/<id>/cancel        {secret}
   POST /api/speak                       {text} → audio/mpeg (ElevenLabs)
 Signed in (Auth0 bearer token, or X-Demo-Account with SWELTER_DEV_LOGIN=1):
-  GET  /api/me                          {sub, role: resident|responder, demo, profile|null}
+  GET  /api/me                          {sub, role: resident|responder|government, name, demo, profile|null}
   PUT  /api/me                          {name, home?: {name, lat, lon}, flags[], phone?}
 Responders (role responder):
   GET  /api/responder/requests
   POST /api/responder/requests/<id>/claim | release | done {outcome}
   POST /api/responder/sites/<id>/report {level: quiet|busy|full}
   GET  /api/responder/risk[?hour=…&replay=…]
+Government (role government):
+  POST /api/ask                         {question, history?: [{question, sql}], scenario?: {hazard, level, iv, budget}}
+                                        → {answer, sql, columns, rows, row_count, model, engine} (Gemini text-to-SQL)
 """
 import hmac
 import re
 from datetime import date, datetime
 
-from . import auth, forecast, live, store, translate, voice
+from . import ask, auth, forecast, live, store, voice
 
 PHILLY = (39.86, 40.14, -75.29, -74.95)  # lat min, lat max, lon min, lon max — requests outside are refused
 SNAP = 0.002  # ~200 m: what an unclaimed request shows of its location
@@ -99,14 +102,6 @@ def get_live(q):
     c = s["conditions"]
     out["danger"] = forecast.danger(s["hazard"], {"heat": c["heat_index_f"] or c["temp_f"], "smoke": c["aqi"],
                                                   "cold": c["wind_chill_f"] or c["temp_f"]}.get(s["hazard"]))
-    if q.get("lang") == "es" and translate.enabled():
-        for a in out["alerts"]:
-            try:
-                a["headline_es"] = translate.to_spanish(a["headline"])
-                a["instruction_es"] = translate.to_spanish(a["instruction"])
-                a["translated_by"] = f"Gemini ({translate.MODEL}), machine translation"
-            except Exception as e:
-                print("translate failed:", repr(e))
     return out
 
 
@@ -185,7 +180,7 @@ def handle(method, path, q, headers, body):
     """→ (status, payload); payload is a dict (JSON) or (bytes, content type)."""
     p = path.rstrip("/")
     if method == "GET" and p == "/api/config":
-        return 200, {"auth0": auth.config(), "voice": voice.enabled(), "translate": translate.enabled(),
+        return 200, {"auth0": auth.config(), "voice": voice.enabled(), "ask": ask.enabled(),
                      "db": store.db().kind, "k_min": store.K_MIN,
                      "replay_days": {sid: forecast.meta()["hazards"][sid.split("_")[0]]["levels"][sid.split("_")[1]]["label"]
                                      for sid in sorted({s.rsplit("_", 1)[0] for s in forecast.meta()["scenarios"]})}}
@@ -215,10 +210,21 @@ def handle(method, path, q, headers, body):
             r = store.get_request(m[1])
         return 200, public_request(r)
     if method == "POST" and p == "/api/speak":
+        signed_in(headers)  # costs ElevenLabs credits, so only for accounts
         need(voice.enabled(), "voice is off (set ELEVENLABS_API_KEY)", 503)
         text = (body.get("text") or "").strip()
         need(text, "no text")
         return 200, (voice.speak(text), "audio/mpeg")
+    if method == "POST" and p == "/api/ask":
+        u = signed_in(headers)
+        need(u["role"] == "government", "Ask is for government accounts", 403)
+        question = (body.get("question") or "").strip()
+        need(question and len(question) <= 500, "ask a question (up to 500 characters)")
+        try:
+            out = ask.answer(question, body.get("history") or [], body.get("scenario"))
+        except RuntimeError as e:  # every Gemini model busy or the key refused
+            raise HTTPError(502, str(e))
+        return (503 if "error" in out else 200), out
     if p.startswith("/api/responder/"):
         u = signed_in(headers)
         need(u["role"] == "responder", "this account isn't a responder yet: an organiser grants the role in Auth0", 403)
@@ -237,7 +243,7 @@ def signed_in(headers, required=True):
 
 
 def me(u, profile):
-    return {"sub": u["sub"], "role": u["role"], "demo": u["demo"], "profile": profile}
+    return {"sub": u["sub"], "role": u["role"], "name": u["name"], "demo": u["demo"], "profile": profile}
 
 
 def demo_profile(u):
@@ -270,7 +276,9 @@ def secrets_eq(a, b):
 
 def responder(method, p, q, body, user, name):
     if method == "GET" and p == "/api/responder/requests":
-        return 200, {"requests": [responder_view(r, user) for r in store.open_requests()], "you": name}
+        # A volunteer can switch to the resident view and ask for help; their own request goes to the others.
+        return 200, {"requests": [responder_view(r, user) for r in store.open_requests() if r.get("user_sub") != user],
+                     "you": name}
     m = re.fullmatch(r"/api/responder/requests/([\w-]+)/(claim|release|done)", p)
     if m and method == "POST":
         rid, act = m[1], m[2]

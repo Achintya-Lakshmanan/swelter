@@ -1,7 +1,8 @@
 import CoreLocation
 import SwiftUI
 
-/// One sign-in for everyone. Auth0 decides who is a responder (an organiser grants the role); the rest are residents.
+/// One sign-in for everyone. Auth0 decides the role (an organiser grants it): volunteers get the responder view,
+/// government accounts are sent to the planner web page, everyone else is a resident.
 struct SignInScreen: View {
     @Environment(AppModel.self) private var model
     @State private var login = Auth0Login()
@@ -20,12 +21,13 @@ struct SignInScreen: View {
 
                 if let a = model.config?.auth0, a.enabled, let domain = a.domain, let client = a.clientId {
                     PrimaryButton(title: "Sign in", busy: busy == "auth0") { auth0(domain, client, a.audience) }
-                    SourceLine(text: "Secured by Auth0 · \(domain). Residents and responders use the same sign-in; your organisation makes you a responder.")
+                    SourceLine(text: "Secured by Auth0 · \(domain). Residents and volunteers use the same sign-in; your organisation makes you a volunteer.")
                 } else if model.config != nil, model.config?.auth0.demoAccounts.isEmpty == true {
                     Text("Sign-in isn't set up on this server yet (AUTH0_DOMAIN is empty).").foregroundStyle(Color.danger)
                 }
 
-                if let demos = model.config?.auth0.demoAccounts, !demos.isEmpty {
+                // The government demo account is for the planner web page, not the phone.
+                if let demos = model.config?.auth0.demoAccounts.filter({ $0.role != "government" }), !demos.isEmpty {
                     Text("Demo accounts").font(.headline).padding(.top, 8)
                     ForEach(demos) { d in
                         Button { demo(d.id) } label: {
@@ -86,6 +88,27 @@ struct SignInScreen: View {
             }
             busy = nil
         }
+    }
+}
+
+/// Government accounts plan on the web page; the phone has nothing for them.
+struct GovernmentNotice: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "building.columns.fill").font(.largeTitle).foregroundStyle(Color.action)
+            Text("Use the planner on the web").font(.largeTitle.bold())
+            Text("\(model.account?.name ?? "This account") is a government account. Government accounts use the Swelter planner in a browser; this app is for residents and volunteers.")
+            Link(destination: API.shared.base) {
+                Label(API.shared.base.absoluteString, systemImage: "safari").font(.headline)
+            }
+            Spacer()
+            PrimaryButton(title: "Sign out", color: .ink) { model.signOut() }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.bg)
     }
 }
 

@@ -11,6 +11,9 @@ struct SettingsScreen: View {
                     LabeledContent("Signed in as", value: model.name ?? "")
                     if let h = model.home { LabeledContent("Home", value: h.name ?? "Saved") }
                     if model.account?.demo == true { LabeledContent("Account", value: "Demo") }
+                    if model.account?.isResponder == true {
+                        Button("Switch back to volunteer view") { model.actingAsResident = false }
+                    }
                     Button("Sign out", role: .destructive) { model.signOut() }
                 }
 
@@ -31,17 +34,6 @@ struct SettingsScreen: View {
                     }
                 } footer: {
                     Text("A site shows a phone-based level only after \(model.config?.kMin ?? 5) or more phones counted it. The code that marks your phone changes every day.")
-                }
-
-                Section("Language") {
-                    Picker("Alerts", selection: $model.spanish) {
-                        Text("English").tag(false)
-                        Text("Español").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    if model.spanish && model.config?.translate != true {
-                        Text("Spanish alerts need the server's Gemini key, which isn't set.").font(.footnote).foregroundStyle(Color.muted)
-                    }
                 }
 
                 Section {
@@ -79,7 +71,6 @@ struct SettingsScreen: View {
             }
             .navigationTitle("Settings")
             .onChange(of: model.replay) { Task { await model.refresh() } }
-            .onChange(of: model.spanish) { Task { await model.refresh() } }
         }
     }
 }
