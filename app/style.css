@@ -4,7 +4,7 @@
   --bg: #0a0a0a; --s1: #121212; --s2: #1a1a1a; --s3: #242424;
   --ink: #efefef; --muted: #a3a3a3; --subtle: #8a8a8a;
   --accent: #e0243a; --accent-ink: #fff;
-  --heat: #ff6a3d; --cold: #9fd8ff; --dot-low: #3fbf7f; --line: var(--s3);
+  --heat: #ff3b40; --cold: #82ceeb; --brand-red: #d61c1f; --brand-navy: #102942; --brand-ice: #82ceeb; --dot-low: #3fbf7f; --line: var(--s3);
   /* names used by auth.js / ask.js styles */
   --panel: var(--s1); --panel-2: var(--s2); --text: var(--ink); --extreme: #eb4d5b; --mono: ui-monospace, "SF Mono", Menlo, monospace;
   --hz: var(--heat);
@@ -14,8 +14,8 @@
 :root[data-hazard="cold"] { --hz: var(--cold); }
 /* The app's theme follows the hazard: warm blacks and crimson for heat, blue-blacks and ice-blue for cold.
    Everything (bar, panel, timebar, inspector, Ask, sign-in) reads these tokens. */
-:root[data-hazard="heat"] { --bg: #0d0a08; --s1: #17110d; --s2: #211812; --s3: #2e221a; --ink: #f3ece6; --muted: #b3a69c; --subtle: #95887e; --accent: #e0243a; --accent-ink: #fff; }
-:root[data-hazard="cold"] { --bg: #070b10; --s1: #0d141c; --s2: #142029; --s3: #1e2d3b; --ink: #e8f0f7; --muted: #9db0c2; --subtle: #8195a8; --accent: #2f8fff; --accent-ink: #fff; }
+:root[data-hazard="heat"] { --bg: #0d0909; --s1: #170f0f; --s2: #221616; --s3: #2f1f1f; --ink: #f5ecea; --muted: #b8a6a3; --subtle: #998784; --accent: #d61c1f; --accent-ink: #fff; }
+:root[data-hazard="cold"] { --bg: #08121d; --s1: #0e1b2a; --s2: #142538; --s3: #1d3249; --ink: #eaf3fa; --muted: #a0b5c8; --subtle: #8499ad; --accent: #82ceeb; --accent-ink: #102942; }
 body, .topbar, .panel, .timebar, .inspector, .ask, .seg, select, .bar-row, .shelter-list li { transition: background-color .4s ease, color .4s ease; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -46,8 +46,10 @@ button, select, input { font: inherit; color: inherit; touch-action: manipulatio
 /* bar: one row, scenario as compact segments */
 .topbar { display: flex; align-items: center; gap: 24px; padding: 10px max(20px, env(safe-area-inset-right)) 10px max(20px, env(safe-area-inset-left)); background: var(--bg); flex: none; z-index: 5; }
 .brand { display: flex; align-items: baseline; gap: 8px; color: var(--ink); text-decoration: none; flex: none; }
-.logo { width: 12px; height: 12px; border-radius: 50%; background: var(--hz); align-self: center; }
+.logo { width: 30px; height: 31px; align-self: center; }
 .brand-name { font-weight: 800; font-size: 19px; letter-spacing: -0.04em; }
+.brand-sos { color: var(--brand-red); }
+:root[data-hazard="cold"] .brand-sos { color: var(--brand-ice); }
 .brand-sub { color: var(--muted); font-size: 14px; }
 .controls { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; flex-wrap: wrap; }
 .control-field { display: flex; align-items: center; gap: 8px; }
@@ -84,8 +86,8 @@ select { background: var(--s1); border: 0; border-radius: var(--r); padding: 7px
   padding: 14px 16px; background: var(--s1); border-radius: 10px; }
 .play { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--accent); cursor: pointer; position: relative; }
 .play:hover { filter: brightness(1.1); }
-.play::before { content: ""; position: absolute; left: 17px; top: 14px; border-style: solid; border-width: 8px 0 8px 13px; border-color: transparent transparent transparent #fff; }
-.play.playing::before { left: 16px; top: 15px; width: 4px; height: 14px; border: 0; background: #fff; box-shadow: 8px 0 0 #fff; }
+.play::before { content: ""; position: absolute; left: 17px; top: 14px; border-style: solid; border-width: 8px 0 8px 13px; border-color: transparent transparent transparent var(--accent-ink); }
+.play.playing::before { left: 16px; top: 15px; width: 4px; height: 14px; border: 0; background: var(--accent-ink); box-shadow: 8px 0 0 var(--accent-ink); }
 .clockbox { min-width: 128px; }
 .clock { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; line-height: 1; }
 .readout { font-size: 13px; color: var(--muted); margin-top: 3px; white-space: nowrap; }
@@ -287,3 +289,7 @@ summary { cursor: pointer; color: var(--ink); }
 .ask-send { background: var(--accent); color: var(--bg); border: 0; border-radius: 3px; padding: 0 16px; font-weight: 600; cursor: pointer; }
 .ask-a p{white-space:pre-line}
 .ask-send { color: var(--accent-ink); }
+
+/* sign-in gate shows the full logo (light wordmark for the dark ground) */
+.gate-logo { width: 220px; height: auto; margin-bottom: 4px; }
+.gate-btn { color: var(--accent-ink); }

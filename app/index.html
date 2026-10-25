@@ -1,20 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-hazard="heat">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0a0a0a">
   <title>ChillySOS · Philadelphia</title>
+  <link rel="icon" href="brand/favicon.ico" sizes="48x48">
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+  <link rel="manifest" href="brand/site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="vendor/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
   <a class="skip" href="#panel">Skip to results</a>
   <header class="topbar">
-    <a class="brand" href="/" aria-label="ChillySOS home"><span class="logo" aria-hidden="true"></span><span class="brand-name">ChillySOS</span><span class="brand-sub">Philadelphia</span></a>
+    <a class="brand" href="/" aria-label="ChillySOS home"><img class="logo" src="brand/chillysos-mark.svg" alt="" width="30" height="31"><span class="brand-name">Chilly<span class="brand-sos">SOS</span></span><span class="brand-sub">Philadelphia</span></a>
     <nav class="controls" aria-label="Scenario">
       <div class="control-field"><span class="control-label">Hazard</span><div class="seg" id="hazard-seg" role="group" aria-label="Hazard"></div></div>
       <div class="control-field"><span class="control-label">Day</span><div class="seg" id="level-seg" role="group" aria-label="Severity"></div></div>

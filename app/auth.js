@@ -69,7 +69,7 @@
     if (!el) { el = document.createElement("div"); el.id = "gate"; el.className = "gate"; document.body.append(el); }
     const who = user ? `${esc(user.name || user.profile?.name || "This account")} · ${ROLE[user.role] || user.role}` : "";
     el.innerHTML = `<div class="gate-card" role="dialog" aria-labelledby="gate-title">
-      <span class="logo" aria-hidden="true"></span>
+      <img class="gate-logo" src="brand/chillysos-logo-on-dark.svg" alt="ChillySOS" width="220" height="94">
       <h2 id="gate-title">ChillySOS planner</h2>
       <p class="muted">For city emergency planners. Residents and volunteers use the ChillySOS iPhone app.</p>
       ${user ? `<p class="gate-msg">Signed in as <b>${who}</b>. This page is for government accounts; open the iPhone app instead.</p>
