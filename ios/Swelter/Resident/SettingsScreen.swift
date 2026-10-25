@@ -57,6 +57,20 @@ struct SettingsScreen: View {
                     Text("Replays a real recorded day's weather (NOAA, EPA) and Swelter's simulated crowds on today's clock, dated this year. Site hours are the city's current posted hours. The simulation covers 6 AM to 10 PM, so overnight there's no crowd forecast or risk layer.")
                 }
 
+                Section {
+                    Toggle("Hourly check-ins in dangerous weather", isOn: $model.checkInsOn)
+                    Picker("Ask a volunteer after", selection: $model.checkInWait) {
+                        ForEach([2, 5, 10], id: \.self) { Text("\($0) min").tag($0) }
+                    }
+                    Toggle("Read updates aloud", isOn: $model.speakUpdates)
+                    Button("Try a check-in now") { model.startCheckIn() }
+                        .disabled(model.live?.danger == nil || model.activeRequest != nil)
+                } header: {
+                    Text("Voice check-ins")
+                } footer: {
+                    Text("Once an hour while the weather is at danger level or worse (the simulator's bands, stricter for people 65+ or with a medical device), Swelter asks out loud if you're okay. No answer means a volunteer is asked to check on you. Works while the app is open. Voice: \(model.config?.voice == true ? "ElevenLabs" : "this phone's built-in voice").")
+                }
+
                 Section("Data") {
                     LabeledContent("Server", value: API.shared.base.host() ?? "")
                     LabeledContent("Storage", value: model.config?.db ?? "…")

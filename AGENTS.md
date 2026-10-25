@@ -68,7 +68,7 @@ canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
 2. **Live "why" with a key**: check `/api/why` answers with Claude and stays grounded in the resident's facts.
 3. **Research track export**: CSV of a run (one row per resident per hour) plus a short methods note download.
    Not built yet.
-4. **Sponsor keys**: Auth0, Tiger Data, ElevenLabs, Gemini, Vultr and GoDaddy are wired but need accounts and keys (see `docs/iphone-app.md`). None has been tested with a real key.
+4. **Sponsor keys**: Auth0, Tiger Data, Gemini, Vultr and GoDaddy are wired but need accounts and keys (see `docs/iphone-app.md`). ElevenLabs runs with a real key (start the server with `uv run --env-file .env server.py`).
 5. **Demo**: 2-minute video and slides; demo opens on the map, record heat day, then "Show me someone whose day
    changed".
 6. `image-to-code` skill is installed but needs an image-generation tool, so it was not used.

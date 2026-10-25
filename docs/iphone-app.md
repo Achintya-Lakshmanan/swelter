@@ -7,7 +7,7 @@ there and close it out. The plan is in `docs/iphone-app-plan.md`.
 ## Run it
 
 ```bash
-SWELTER_DEV_LOGIN=1 uv run server.py              # API + web demo on http://127.0.0.1:8000
+SWELTER_DEV_LOGIN=1 uv run --env-file .env server.py   # API + web demo on http://127.0.0.1:8000 (keys from .env)
 cd ios && xcodegen generate && open Swelter.xcodeproj   # run the Swelter scheme on any iPhone simulator
 ```
 
@@ -43,6 +43,26 @@ forecast this hour" and the responder risk layer is empty with a note, instead o
     hears the warning and spends 9 AM to 10 PM at extreme danger at home (119 °F heat index at 3 PM).
   - **Marisol Rivera**, responder. A made-up volunteer, no real organisation.
 
+## Voice (ElevenLabs)
+
+With `ELEVENLABS_API_KEY` set, three things are spoken, through `POST /api/speak` (audio cached by text in
+`data/tts/`, so a repeated line costs nothing). Without the key, the phone falls back to its built-in voice and the
+web page to the browser's.
+
+- **Hourly check-in (resident).** Once per clock hour while the current reading is at danger or worse, by the
+  simulator's own bands (`forecast.BANDS`, the stricter set for 65+ or a medical device), a sheet asks "Are you
+  okay?" and says it out loud: the time, the reading, the danger level, and "your home has no AC" when that's in the
+  profile. "I'm OK" answers with a tip; "I need help", or no answer within the wait set in Settings (2, 5 or 10
+  min), sends a "Check on someone" request with a note saying which happened. It works while the app is open (no
+  push notifications); a deadline that passed while the app was closed sends on return. Settings › Voice
+  check-ins turns it off, sets the wait, and has "Try a check-in now".
+- **Request updates (resident).** "Your request is sent", "Marisol Rivera accepted your request and is on the way",
+  "… closed your request: checked, they're OK". Settings › Read updates aloud.
+- **"Why?" on the web simulator.** ▶ Listen reads the resident's explanation, with diary IDs and 24-hour times
+  rewritten for speech.
+
+`/api/speak` has no sign-in (the web demo has none), so set a monthly credit limit on the key.
+
 ## Demo script (one phone + the laptop)
 
 Setup: the server runs on a reachable host (Vultr, or the laptop's LAN IP set as `SWELTER_API_BASE`) with
@@ -60,8 +80,13 @@ app follows the real clock, so the risk layer and crowd forecasts show between 6
 4. **Laptop: Marisol's phone pops up "Kayla asked for help"** within 5 seconds, with the need, her risk flags and
    the distance, location rounded to ~200 m. Accept.
 5. **Marisol sees the exact address** (2801 N Warnock St), the nearest cooling site with room, and Navigate.
-6. **Kayla's phone now says "Help is on the way · Marisol Rivera accepted".** Marisol closes it out as "Moved to a
-   site", and Kayla's status shows Done.
+6. **Kayla's phone now says "Help is on the way · Marisol Rivera accepted"**, and says it out loud. Marisol closes
+   it out as "Moved to a site", and Kayla's status shows Done.
+
+Voice check-in variant of steps 3–4 (on the record heat day any hour but 3–7 AM, or any time on the winter
+storm day): Settings › Voice check-ins › Ask a volunteer after 2 min, then Try a check-in now. The phone asks Kayla if
+she's okay; don't answer. After 2 minutes Marisol gets "Kayla asked for help" with the note "No answer to the 3 PM
+check-in".
 
 Reset between runs: stop the server, delete `data/swelter.db`, start it again.
 
@@ -108,7 +133,7 @@ Reset between runs: stop the server, delete `data/swelter.db`, start it again.
 |---|---|---|
 | **Auth0** | Sign-in for residents and responders: Universal Login with PKCE from the app (`ios/Swelter/Core/Auth0Login.swift`, no SDK; token kept in the Keychain); the server checks RS256 tokens against the tenant's JWKS and reads the responder role (`backend/auth.py`) | Create a Native app and an API (identifier e.g. `https://api.swelter.app`). Allowed callback: `app.swelter.Swelter://<domain>/ios/app.swelter.Swelter/callback`. Set `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_AUDIENCE`. On the API, enable RBAC and "Add Permissions in the Access Token", add a `respond:requests` permission, and give it to responders (directly or through a Responder role) |
 | **Tiger Data** (Timescale) | Presence pings, requests and site reports in Postgres; `presence` becomes a hypertable | `uv sync --extra tiger`, then set `DATABASE_URL` to the Tiger Cloud connection string. Unset = SQLite at `data/swelter.db` |
-| **ElevenLabs** | "Listen" on alerts (multilingual voice, so Spanish works); audio cached in `data/tts/` | `ELEVENLABS_API_KEY` (optional `ELEVENLABS_VOICE_ID`) |
+| **ElevenLabs** | Spoken hourly check-ins, request updates, "Listen" on alerts and on the web "Why?" explainer; audio cached in `data/tts/` | `ELEVENLABS_API_KEY` (optional `ELEVENLABS_VOICE_ID`) |
 | **Gemini** | Spanish translations of NWS alert headlines and instructions, labelled as machine translation | `GEMINI_API_KEY` (optional `GEMINI_MODEL`) |
 | **Vultr** | Hosting: `Dockerfile` runs the API + web demo on port 8000 | On a Vultr Docker instance: `docker build -t swelter . && docker run -d -p 80:8000 --env-file .env swelter` |
 | **GoDaddy** | Domain for the API and demo | Point an A record (e.g. `api.<domain>`) at the Vultr IP; put TLS in front (Caddy or Vultr load balancer), then set `SWELTER_API_BASE=https://api.<domain>` in `ios/project.yml` |
@@ -127,7 +152,7 @@ accept it; then they get the exact point, note and callback number.
 
 - Auth0 against a real tenant (no tenant on the dev machine). The demo-account path was tested end to end in the
   simulator: Kayla's request → Marisol's pop-up → accept → exact address; Kayla's status shows Marisol accepted.
-- Tiger Data, ElevenLabs and Gemini with real keys.
+- Tiger Data and Gemini with real keys. (ElevenLabs is tested with a real key.)
 - The Docker image (Docker isn't installed on the dev machine).
 - Geofence crowd counting on a real phone. The simulator can't walk into a site; the server side was tested by
   posting enter events.

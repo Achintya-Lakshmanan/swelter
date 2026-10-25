@@ -93,8 +93,12 @@ def get_live(q):
         out |= {"conditions": forecast.replay_conditions(s["scenario"], s["hour"]), "alerts": [], "forecast": [],
                 "simulated": {"date": d.isoformat(), "label": f"{d:%a, %b} {d.day}, {d.year}"},
                 "note": "Replaying a real recorded day. Not today's weather."}
+        out["danger"] = forecast.danger(s["hazard"], out["conditions"]["value"])
         return out
     out |= {"conditions": s["conditions"], "alerts": s["alerts"], "forecast": live.hourly_forecast()}
+    c = s["conditions"]
+    out["danger"] = forecast.danger(s["hazard"], {"heat": c["heat_index_f"] or c["temp_f"], "smoke": c["aqi"],
+                                                  "cold": c["wind_chill_f"] or c["temp_f"]}.get(s["hazard"]))
     if q.get("lang") == "es" and translate.enabled():
         for a in out["alerts"]:
             try:

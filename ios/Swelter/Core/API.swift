@@ -46,6 +46,13 @@ struct Live: Decodable {
     var note: String?
     /// During a replay: the date the demo pretends it is (the record day, this year).
     var simulated: Simulated?
+    /// Danger level of the current reading, with the simulator's bands (0 safe … 3 extreme).
+    var danger: Danger?
+}
+
+struct Danger: Decodable {
+    let level: Int; let vulnerableLevel: Int; let words: String; let vulnerableWords: String
+    let hazard: String; let value: Double
 }
 
 struct Crowd: Decodable {

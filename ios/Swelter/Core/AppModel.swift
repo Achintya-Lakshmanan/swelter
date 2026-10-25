@@ -28,6 +28,22 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
     /// A replay runs on the real clock: the record day's weather at the current hour.
     var clockHour = Calendar.current.component(.hour, from: Date())
     var replayHour: Int { clockHour }
+    /// Hourly "are you okay?" check-ins while the weather is dangerous (on unless turned off).
+    var checkInsOn = UserDefaults.standard.object(forKey: "checkInsOn") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(checkInsOn, forKey: "checkInsOn") }
+    }
+    /// Minutes to wait for an answer before asking a volunteer to check.
+    var checkInWait = UserDefaults.standard.object(forKey: "checkInWait") as? Int ?? 5 {
+        didSet { UserDefaults.standard.set(checkInWait, forKey: "checkInWait") }
+    }
+    /// Read request updates aloud ("Marisol accepted your request").
+    var speakUpdates = UserDefaults.standard.object(forKey: "speakUpdates") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(speakUpdates, forKey: "speakUpdates") }
+    }
+    var checkIn: CheckInPrompt?
+    var residentTab = 0
+    /// Set when the resident sends a request from the form, so the status screen says it out loud once.
+    var announceSent = false
     var crowdCounting = UserDefaults.standard.bool(forKey: "crowdCounting") {
         didSet { UserDefaults.standard.set(crowdCounting, forKey: "crowdCounting"); updateGeofences() }
     }
@@ -67,6 +83,7 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
     var helpLocation: CLLocation? { hereInPhilly ?? (here != nil || authStatus == .denied ? homeLocation : nil) }
 
     private var player: AVAudioPlayer?
+    private let synth = AVSpeechSynthesizer()
 
     override init() {
         super.init()
@@ -155,6 +172,7 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
             sitesMode = st.mode
             loadError = nil
             updateGeofences()
+            maybeCheckIn()
         } catch {
             loadError = error.localizedDescription
         }
@@ -170,15 +188,18 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
 
     // MARK: voice (ElevenLabs via the server)
 
+    /// ElevenLabs through the server; the phone's own voice if the server has no key or can't be reached.
+    /// Plays even with the ringer switch on silent.
     @MainActor
     func speak(_ text: String) async {
-        do {
-            let data = try await API.shared.speak(text)
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
-            player = try AVAudioPlayer(data: data)
-            player?.play()
-        } catch {
-            loadError = "Couldn't play audio: \(error.localizedDescription)"
+        player?.stop()
+        synth.stopSpeaking(at: .immediate)
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+        if config?.voice == true, let data = try? await API.shared.speak(text), let p = try? AVAudioPlayer(data: data) {
+            player = p
+            p.play()
+        } else {
+            synth.speak(AVSpeechUtterance(string: text))
         }
     }
 

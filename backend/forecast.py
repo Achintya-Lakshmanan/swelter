@@ -120,6 +120,25 @@ def replay_conditions(scenario, hour):
             "source": "NOAA ISD hourly at PHL" if hz != "smoke" else "EPA AQS hourly PM2.5 (NowCast AQI)"}
 
 
+# Danger levels, the same bands the simulator scores exposure with (scripts/swelter/hazards.py): 0 safe, 1 caution,
+# 2 danger, 3 extreme. The "vulnerable" bands apply to older adults, people with lung conditions and the unhoused.
+BANDS = {"heat": ([(90, 1), (103, 2), (115, 3)], [(85, 1), (95, 2), (105, 3)]),       # NWS heat index categories
+         "smoke": ([(101, 1), (201, 2), (301, 3)], [(51, 1), (151, 2), (201, 3)]),    # EPA AQI categories
+         "cold": ([(32, 1), (10, 2), (-10, 3)], [(40, 1), (20, 2), (0, 3)]),          # wind chill, colder is worse
+         "flood": ([(0.5, 1), (1.0, 2), (2.0, 3)],) * 2}                               # 3-h rain (assumed bands)
+LEVEL_WORDS = ["safe", "caution", "danger", "extreme danger"]
+
+
+def danger(hz, value):
+    """Danger level now for most people and for vulnerable people, from the hazard's current reading."""
+    if hz not in BANDS or value is None:
+        return None
+    worse = (lambda v, t: v <= t) if hz == "cold" else (lambda v, t: v >= t)
+    lv = [max([n for t, n in bands if worse(value, t)], default=0) for bands in BANDS[hz]]
+    return {"level": lv[0], "vulnerable_level": lv[1], "words": LEVEL_WORDS[lv[0]],
+            "vulnerable_words": LEVEL_WORDS[lv[1]], "hazard": hz, "value": value}
+
+
 # The demo is told through one simulated resident on the record heat day: Kayla, 75+, Fairhill (tract 175), lives
 # alone, no AC, never hears the warning, extreme danger at home 9 AM-10 PM. Her demo account's profile comes from
 # that resident, so the person the audience sees on the simulator map is the one asking for help on the phone.

@@ -29,12 +29,19 @@ struct SwelterApp: App {
 }
 
 struct ResidentTabs: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
-        TabView {
-            ResidentMap().tabItem { Label("Map", systemImage: "map") }
-            HelpTab().tabItem { Label("Get help", systemImage: "hand.raised") }
-            SettingsScreen().tabItem { Label("Settings", systemImage: "gearshape") }
+        @Bindable var model = model
+        TabView(selection: $model.residentTab) {
+            ResidentMap().tabItem { Label("Map", systemImage: "map") }.tag(0)
+            HelpTab().tabItem { Label("Get help", systemImage: "hand.raised") }.tag(1)
+            SettingsScreen().tabItem { Label("Settings", systemImage: "gearshape") }.tag(2)
         }
+        // The hourly check-in comes up over whatever tab is open, and speaks. Checked here too (not only after a
+        // refresh) so it shows right after sign-in, once these tabs are on screen.
+        .sheet(item: $model.checkIn) { CheckInSheet(prompt: $0) }
+        .task { model.maybeCheckIn() }
     }
 }
 

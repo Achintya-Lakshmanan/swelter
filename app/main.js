@@ -400,11 +400,34 @@
     }
     btn.disabled = false; btn.textContent = `Why did ${M.residents[i].name} do this?`;
   }
-  function speak(text) {
-    if (!("speechSynthesis" in window)) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.rate = 1.02;
-    speechSynthesis.speak(u);
+  // ElevenLabs through the server (cached per text); the browser's own voice if the key isn't set.
+  let voiceAudio = null;
+  // Written for reading; said aloud, diary IDs and 24-hour times get in the way.
+  const forSpeech = (t) => t.replace(/\s*#\d+/g, "").replace(/°F/g, " degrees")
+    .replace(/\b(\d{1,2}):00\b/g, (_, h) => `${(+h + 11) % 12 + 1} ${+h < 12 ? "AM" : "PM"}`)
+    .replace(/\s+—\s+/g, ", ").replace(/\s{2,}/g, " ");
+  async function speak(text) {
+    text = forSpeech(text);
+    const btn = $("#speak");
+    if (voiceAudio) { voiceAudio.pause(); voiceAudio = null; }
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
+    try {
+      const res = await fetch("api/speak", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error(res.status);
+      voiceAudio = new Audio(URL.createObjectURL(await res.blob()));
+      await voiceAudio.play();
+      if (btn) btn.title = "Voice: ElevenLabs";
+    } catch (e) {
+      if (!("speechSynthesis" in window)) return;
+      const u = new SpeechSynthesisUtterance(text); u.rate = 1.02;
+      speechSynthesis.speak(u);
+      if (btn) btn.title = "Voice: this browser (ElevenLabs is off)";
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "▶ Listen"; }
+    }
   }
 
   // ---------- modals ----------

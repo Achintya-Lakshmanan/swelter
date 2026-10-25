@@ -115,6 +115,7 @@ struct HelpForm: View {
         Task {
             do {
                 let r = try await API.shared.ask(need: need, flags: Array(flags), people: people, at: c, callback: callback, note: note)
+                model.announceSent = true
                 model.activeRequest = (r.id, r.secret)
             } catch {
                 self.error = error.localizedDescription
@@ -154,6 +155,7 @@ struct StatusScreen: View {
     let secret: String
     @State private var req: HelpRequest?
     @State private var error: String?
+    @State private var lastStatus: String?
 
     var body: some View {
         ScrollView {
@@ -195,8 +197,10 @@ struct StatusScreen: View {
         .task {
             while !Task.isCancelled {
                 do {
-                    req = try await API.shared.request(id: id, secret: secret)
+                    let r = try await API.shared.request(id: id, secret: secret)
+                    req = r
                     error = nil
+                    announce(r)
                 } catch {
                     if error.localizedDescription == "not found" { model.activeRequest = nil; return }  // server data was reset
                     self.error = error.localizedDescription
@@ -204,6 +208,25 @@ struct StatusScreen: View {
                 try? await Task.sleep(for: .seconds(5))
             }
         }
+    }
+
+    /// Says each change out loud: sent (from the form), accepted, closed. Not the state found on opening the screen.
+    private func announce(_ r: HelpRequest) {
+        defer { lastStatus = r.status }
+        guard model.speakUpdates else { model.announceSent = false; return }
+        var line: String?
+        if lastStatus == nil && model.announceSent && r.status == "open" {
+            line = "Your request is sent. Volunteers nearby can see it now. I'll tell you when someone accepts."
+        } else if let old = lastStatus, old != r.status {
+            let who = r.claimedName ?? "A volunteer"
+            switch r.status {
+            case "claimed": line = "\(who) accepted your request and is on the way."
+            case "done": line = "\(who) closed your request: \(r.outcome.map { Labels.outcome($0).lowercased() } ?? "done")."
+            default: break
+            }
+        }
+        model.announceSent = false
+        if let line { Task { await model.speak(line) } }
     }
 
     private func headline(_ r: HelpRequest) -> String {
