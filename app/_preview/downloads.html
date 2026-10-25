@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="/">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Swelter · Downloads (preview)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_preview/landing-a.css?v=2">
+  <link rel="stylesheet" href="_preview/pages.css?v=1">
+</head>
+<body>
+  <header class="nav">
+    <a class="mark" href="_preview/landing-a.html"><span class="dot" aria-hidden="true"></span>Swelter</a>
+    <nav aria-label="Site"><a href="_preview/sim-a.html">Simulator</a><a href="_preview/downloads.html" aria-current="page">Downloads</a><a href="_preview/about.html">About</a></nav>
+    <a class="btn" href="_preview/sim-a.html">Open the simulator</a>
+  </header>
+  <main class="page">
+    <h1>Take the data with you.</h1>
+    <p class="lead">Everything the simulator shows is a file you can open. Residents are synthetic; risk values are trained-model predictions of simulated exposure, not health outcomes.</p>
+
+    <h2>Replays</h2>
+    <table class="files">
+      <thead><tr><th scope="col">File</th><th scope="col">What it holds</th><th scope="col" class="num">Size</th></tr></thead>
+      <tbody>
+        <tr><td><a href="data/runs/heat_moderate_none.json" download>heat_moderate_none.json</a></td><td>Typical heat, Jul 19 2020: 1,560 residents × 17 hours (activity, place, reason code)</td><td class="num">336 KB</td></tr>
+        <tr><td><a href="data/runs/heat_severe_none.json" download>heat_severe_none.json</a></td><td>Severe heat, Jul 20 2019</td><td class="num">336 KB</td></tr>
+        <tr><td><a href="data/runs/heat_extreme_none.json" download>heat_extreme_none.json</a></td><td>Record heat, Jul 22 2011</td><td class="num">336 KB</td></tr>
+        <tr><td><a href="data/runs/cold_moderate_none.json" download>cold_moderate_none.json</a></td><td>Typical cold, Jan 27 2022</td><td class="num">337 KB</td></tr>
+        <tr><td><a href="data/runs/cold_severe_none.json" download>cold_severe_none.json</a></td><td>Severe cold, Jan 2 2018</td><td class="num">337 KB</td></tr>
+        <tr><td><a href="data/runs/cold_extreme_none.json" download>cold_extreme_none.json</a></td><td>Record cold, Jan 7 2014</td><td class="num">337 KB</td></tr>
+        <tr><td><a href="data/meta.json" download>meta.json</a></td><td>Residents, places, groups, hazards and the data trace for every resident</td><td class="num">2.0 MB</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Models and validation</h2>
+    <table class="files">
+      <thead><tr><th scope="col">File</th><th scope="col">What it holds</th><th scope="col" class="num">Size</th></tr></thead>
+      <tbody>
+        <tr><td><a href="data/shelter_models.json" download>shelter_models.json</a></td><td>Heat and cold model report: metrics, limitations, site rankings, per-resident risk</td><td class="num">1.4 MB</td></tr>
+        <tr><td><a href="data/validation.json" download>validation.json</a></td><td>Simulated vs Google mobility, held-out 2022 (MAE 0.6 pp)</td><td class="num">2 KB</td></tr>
+        <tr><td><span class="todo">methods.pdf</span></td><td>Two-page methods note. <b>Not written yet.</b></td><td class="num">–</td></tr>
+        <tr><td><span class="todo">run.csv</span></td><td>One row per resident per hour, for researchers. <b>Not built yet.</b></td><td class="num">–</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Source</h2>
+    <p><a href="https://github.com/Achintya-Lakshmanan/swelter">github.com/Achintya-Lakshmanan/swelter</a>: the data pipeline, simulator, models and this site. README lists how to rebuild every file above.</p>
+  </main>
+  <footer class="foot"><p class="credits">Data: NOAA, U.S. Census ACS 2024, EIA RECS 2020, CDC PLACES, BLS ATUS 2018–2024, Google Community Mobility Reports, City of Philadelphia. Map © CARTO, © OpenStreetMap contributors.</p></footer>
+</body>
+</html>

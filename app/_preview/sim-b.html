@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <base href="/">
+  <meta name="theme-color" content="#0b0f14">
+  <title>Swelter · Philadelphia (preview B)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=TikTok+Sans:wdth,wght@75..150,300..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="_preview/sim-b.css?v=2">
+</head>
+<body>
+  <a class="skip" href="#panel">Skip to results</a>
+  <header class="topbar">
+    <a class="brand" href="_preview/landing-b.html" aria-label="Swelter home"><span class="logo" aria-hidden="true"></span><span class="brand-name">Swelter</span><span class="brand-sub">Philadelphia</span></a>
+    <nav class="controls" aria-label="Scenario">
+      <div class="control-field"><span class="control-label">Hazard</span><div class="seg" id="hazard-seg" role="group" aria-label="Hazard"></div></div>
+      <div class="control-field"><span class="control-label">Day</span><div class="seg" id="level-seg" role="group" aria-label="Severity"></div></div>
+      <div class="control-field response-field"><span class="control-label">City response</span><div class="seg" id="iv-seg" role="group" aria-label="City response"></div></div>
+      <label class="shelter-budget control-field" for="shelter-budget"><span class="control-label">Sites</span>
+        <select id="shelter-budget"><option value="1">1 site</option><option value="3" selected>3 sites</option><option value="5">5 sites</option></select>
+      </label>
+    </nav>
+    <div class="top-actions">
+      <button class="ghost" id="btn-validate">Validation</button>
+      <button class="ghost" id="btn-methods">Methods</button>
+      <a class="ghost" href="_preview/landing-b.html">About</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="map-wrap" aria-label="Map replay">
+      <div id="map"></div>
+      <div class="hud-title">
+        <h1 class="finding" id="finding">Loading the day…</h1>
+        <p class="finding-sub" id="finding-sub"></p>
+        <div class="map-badge" id="iv-badge" aria-live="polite"></div>
+      </div>
+      <div id="tooltip" class="tooltip" hidden></div>
+
+      <aside class="inspector" id="inspector" aria-labelledby="insp-title" hidden>
+        <button class="close" id="insp-close" aria-label="Close resident details">×</button>
+        <div id="insp-body"></div>
+      </aside>
+
+      <div class="timebar">
+        <button class="play" id="play" aria-label="Pause"></button>
+        <div class="clockbox">
+          <div class="clock" id="clock">11:00 AM</div>
+          <div class="readout" id="readout"></div>
+        </div>
+        <div class="time-track">
+          <svg id="spark" class="spark" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <input type="range" id="time" min="6" max="22.99" step="0.01" value="11" aria-label="Time of day">
+          <div class="ticks" id="ticks" aria-hidden="true"></div>
+        </div>
+        <button class="ghost peak" id="peak">Peak</button>
+        <select id="speed" class="speed" aria-label="Playback speed">
+          <option value="0.125">0.5×</option>
+          <option value="0.25" selected>1×</option>
+          <option value="0.5">2×</option>
+          <option value="1">4×</option>
+        </select>
+        <div class="keyrow">
+          <div class="legend" id="legend"></div>
+          <div class="ramp" id="ramp"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel" id="panel" tabindex="-1">
+      <div id="exposure-panel">
+        <div class="panel-head">
+          <div class="eyebrow" id="history-eyebrow" hidden>Compare</div>
+          <h2 id="compare-title">Predicted risk by group</h2>
+          <p class="muted" id="compare-sub"></p>
+        </div>
+        <p class="caution" id="compare-note" hidden></p>
+        <div id="compare-bars" class="bars"></div>
+      </div>
+      <section id="shelter-panel" aria-label="Selected sites" hidden>
+        <div id="shelter-body" aria-live="polite" aria-atomic="true"></div>
+      </section>
+      <p class="credits">Map © CARTO, © OpenStreetMap contributors. Residents are synthetic; risk is a trained-model prediction of simulated exposure.</p>
+    </aside>
+  </main>
+
+  <dialog id="modal" class="modal" aria-label="Simulation information">
+    <button class="close" id="modal-close" aria-label="Close">×</button>
+    <div id="modal-body"></div>
+  </dialog>
+
+  <script src="vendor/maplibre-gl.js"></script>
+  <script src="vendor/deckgl.min.js"></script>
+  <script src="_preview/sim.js?v=1"></script>
+  <script src="shelters.js?v=4"></script>
+  <script src="_preview/hud.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <base href="/">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Swelter · Who does the heat reach first? (preview A)</title>
+  <meta name="description" content="Swelter replays Philadelphia's real heatwave and winter-storm days hour by hour for 1,560 synthetic residents and shows which cooling or warming sites reach the people at risk.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_preview/landing-a.css?v=2">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <a class="mark" href="_preview/landing-a.html"><span class="dot" aria-hidden="true"></span>Swelter</a>
+    <nav aria-label="Site"><a href="_preview/sim-a.html">Simulator</a><a href="_preview/downloads.html">Downloads</a><a href="_preview/about.html">About</a></nav>
+    <a class="btn" href="_preview/sim-a.html">Open the simulator</a>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>Who does the heat reach first?</h1>
+        <p class="lead">Swelter replays Philadelphia’s real heatwave and winter-storm days, hour by hour, for 1,560 synthetic residents, and shows which cooling or warming sites reach the people at risk.</p>
+        <div class="hero-actions"><a class="btn big" href="_preview/sim-a.html?hazard=heat&amp;level=severe">Replay Jul 20, 2019</a><a class="text-link" href="_preview/sim-a.html?hazard=cold&amp;level=severe">or Jan 2, 2018 in the cold</a></div>
+      </div>
+      <div class="stage" data-ui>
+        <iframe src="_preview/sim-a.html?hazard=heat&amp;level=severe&amp;iv=refuge&amp;t=14" title="Swelter simulator, live: heatwave of Jul 20, 2019 with 3 cooling sites open" loading="eager"></iframe>
+      </div>
+      <p class="stage-caption">The simulator itself, running: the real heat index at PHL on Jul 20 2019, every dot a synthetic resident following a real time-use diary. Click any dot to see their day.</p>
+    </section>
+
+    <section class="day" aria-labelledby="day-h">
+      <div class="day-copy">
+        <h2 id="day-h">A real day, not a scenario.</h2>
+        <p>Each replay is a day that happened. Severe heat is Jul 20, 2019: the 12th-worst of 206 hot days at Philadelphia International since 2010. The heat index climbed from 88°F at 6 AM to 107°F at 6 PM.</p>
+      </div>
+      <figure class="bars" data-ui aria-label="Heat index by hour, Jul 20 2019, Philadelphia International">
+        <!-- NOAA hourly heat index at PHL, 6 AM–10 PM (app/data/runs/heat_severe_none.json intensity) -->
+        <div class="bar-grid" id="bars"></div>
+        <figcaption>Heat index by hour at PHL, 6 AM to 10 PM, °F. Source: NOAA hourly observations.</figcaption>
+      </figure>
+    </section>
+
+    <section class="how" aria-labelledby="how-h">
+      <h2 id="how-h">Four real inputs, one honest question.</h2>
+      <div class="fields">
+        <div class="field f1"><img src="img/heat-day-strip.jpg" width="1000" height="400" alt="Strip of the map at mid-afternoon with residents coloured by predicted risk" loading="lazy"><p><b>First, the weather.</b> NOAA hourly records at PHL for three real days per hazard: typical, severe, record.</p></div>
+        <div class="field f2"><img src="img/rowhouses-strawberry-mansion.jpg" width="1920" height="1440" alt="Rowhouses on N Napa Street, Strawberry Mansion, Philadelphia" loading="lazy"><p><b>Then, the people.</b> 1,560 residents built from Census ACS tracts, RECS air-conditioning rates and CDC PLACES health data.</p></div>
+        <div class="field f3"><img src="img/inspector.jpg" width="380" height="669" alt="Resident card showing one resident's day hour by hour" loading="lazy"><p><b>Then, their routines.</b> Each weekday is a real American Time Use Survey diary, matched by age and work.</p></div>
+        <div class="field f4"><img src="img/map-heat-record.jpg" width="1060" height="792" alt="Map with numbered cooling sites selected for the record heat day" loading="lazy"><p><b>Last, the sites.</b> The city’s 31 real cooling and warming sites with posted hours. A trained model ranks which 1, 3 or 5 reach the most risk.</p></div>
+      </div>
+    </section>
+
+    <section class="proof" aria-labelledby="proof-h">
+      <div class="proof-head">
+        <h2 id="proof-h">Checked against held-out data.</h2>
+        <p>Scores measure agreement with simulated and observed behaviour, not health outcomes. Where a test failed, the app says so.</p>
+      </div>
+      <dl class="ledger">
+        <div><dt>0.519 h</dt><dd>Heat model’s held-out daily exposure error per resident (winter: 0.318 h).</dd></div>
+        <div><dt>0.6 pp</dt><dd>Behaviour fitted to Google mobility 2020–21, off by 0.6 percentage points on held-out 2022 hot days across six categories.</dd></div>
+        <div><dt>1 fail</dt><dd>The typical winter-day unseen-weather test did not beat a constant-risk baseline. The simulator flags it on that day.</dd></div>
+      </dl>
+      <p class="caveat">Reachable risk is not prevented exposure: attendance, route safety, capacity and current facility conditions are unverified. Residents are synthetic; counts are not population estimates.</p>
+    </section>
+
+    <section class="cta" aria-labelledby="cta-h">
+      <h2 id="cta-h">Pick a day. Open a site. Watch who it reaches.</h2>
+      <a class="btn big" href="_preview/sim-a.html">Open the simulator</a>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-row">
+      <p>Built at HackPSU 2026 by the Swelter team.</p>
+      <nav aria-label="Footer"><a href="_preview/downloads.html">Downloads</a><a href="_preview/about.html">About</a><a href="https://github.com/Achintya-Lakshmanan/swelter">Source code</a></nav>
+    </div>
+    <p class="credits">Data: NOAA, U.S. Census ACS 2024, EIA RECS 2020, CDC PLACES, BLS ATUS 2018–2024, Google Community Mobility Reports, City of Philadelphia. Map © CARTO, © OpenStreetMap contributors. Rowhouses photo: Eli Pousson, CC BY-SA 2.0, via Wikimedia Commons.</p>
+    <p class="wordmark" aria-hidden="true">Swelter</p>
+  </footer>
+  <script>
+    // real hourly heat index, Jul 20 2019 (same values the simulator replays)
+    const I = [88, 88, 89, 92, 95, 99, 101, 100, 102, 105, 105, 106, 107, 106, 103, 102, 103];
+    const lo = 80, hi = Math.max(...I), pk = I.indexOf(hi);
+    document.getElementById("bars").innerHTML = I.map((v, i) => {
+      const h = 6 + i, lab = `${((h + 11) % 12) + 1} ${h < 12 ? "AM" : "PM"}`;
+      return `<div class="b${i === pk ? " pk" : ""}" style="--h:${((v - lo) / (hi - lo)) * 100}%" tabindex="0" aria-label="${lab}: ${v}°F">${i === 0 || i === pk || i === I.length - 1 ? `<span>${v}°</span>` : ""}</div>`;
+    }).join("");
+  </script>
+</body>
+</html>
