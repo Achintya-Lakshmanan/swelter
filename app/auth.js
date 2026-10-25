@@ -1,6 +1,7 @@
 /* Sign-in for the planner page, which is for government accounts. Auth0 Universal Login with PKCE, no SDK; the
-   server decides the role (backend/auth.py). Residents and volunteers use the iPhone app. With SWELTER_DEV_LOGIN=1
-   the server also offers a demo government account. main.js starts once swelterAuth.ready resolves. */
+   server decides the role (backend/auth.py). Residents and volunteers use the iPhone app. The page offers no demo
+   account; the server's demo accounts (SWELTER_DEV_LOGIN=1) are for the iPhone app. main.js starts once
+   swelterAuth.ready resolves. */
 (() => {
   const KEY = "swelter.auth", PKCE = "swelter.pkce";
   const read = (k) => { try { return JSON.parse(sessionStorage.getItem(k)); } catch (e) { return null; } };
@@ -62,11 +63,10 @@
     return j;
   }
 
-  /** The sign-in screen over the page: Auth0, demo government account, or "this page isn't for your account". */
+  /** The sign-in screen over the page: Auth0, or "this page isn't for your account". */
   function gate({ error, user } = {}) {
     let el = document.getElementById("gate");
     if (!el) { el = document.createElement("div"); el.id = "gate"; el.className = "gate"; document.body.append(el); }
-    const demos = (cfg?.auth0?.demo_accounts || []).filter((d) => d.role === "government");
     const who = user ? `${esc(user.name || user.profile?.name || "This account")} · ${ROLE[user.role] || user.role}` : "";
     el.innerHTML = `<div class="gate-card" role="dialog" aria-labelledby="gate-title">
       <span class="logo" aria-hidden="true"></span>
@@ -75,17 +75,11 @@
       ${user ? `<p class="gate-msg">Signed in as <b>${who}</b>. This page is for government accounts; open the iPhone app instead.</p>
         <button class="gate-btn" id="gate-out">Sign out</button>` : `
         ${webAuth0() ? `<button class="gate-btn" id="gate-auth0">Sign in with Auth0</button>`
-          : `<p class="gate-msg">Auth0 isn't set up on this server (AUTH0_DOMAIN and AUTH0_WEB_CLIENT_ID in .env).</p>`}
-        ${demos.map((d) => `<button class="gate-demo" data-id="${esc(d.id)}"><b>${esc(d.name)}</b><span>${esc(d.about)} · demo</span></button>`).join("")}`}
+          : `<p class="gate-msg">Auth0 isn't set up on this server (AUTH0_DOMAIN and AUTH0_WEB_CLIENT_ID in .env).</p>`}`}
       ${error ? `<p class="gate-err">${esc(error)}</p>` : ""}
     </div>`;
     el.querySelector("#gate-auth0")?.addEventListener("click", login);
     el.querySelector("#gate-out")?.addEventListener("click", signOut);
-    el.querySelectorAll(".gate-demo").forEach((b) => b.addEventListener("click", () => {
-      session = { demo: b.dataset.id };
-      write(KEY, session);
-      location.reload();
-    }));
   }
 
   function chip(u) {
