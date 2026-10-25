@@ -128,3 +128,10 @@ canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
 
 ## Further sidebar cleanup — Oct 25
 - Removed hourly coverage disclosure/table/note, population-category guidance, historical context paragraph, shelter planning heading/intro and duplicate open-sites action. Standard city hides the empty site section; City response still opens the selected-site list and map markers.
+
+## Simulator restyle — Oct 25 (branch ui-redesign)
+- Merged origin/iphone-app (20k residents, Auth0 gate, Ask, slider fixes) into ui-redesign, then restyled the planner page: black "Instrument" look, Schibsted Grotesk, full-bleed map with a live finding over it (`app/hud.js`), green lower-risk dots, hazard-coloured elevated dots, numbered white site rings, opens at 11 AM (`?t=` overrides), paused under Reduce Motion.
+- Inspector: danger-hours figure, 17-hour strip, live "why" button (`/api/why` with `swelterAuth.headers()`), chips, hour-by-hour and data trace collapsed.
+- Removed Validation, Methods and About from the bar (their modals too). about.html still exists but is unlinked. The redesign landing page was discarded.
+- Slider: fixed-size thumb; spark and tick labels are inset by half the thumb so thumb, playhead and labels match to the pixel.
+- Local testing: `.claude/launch.json` has `swelter-dev` (SWELTER_DEV_LOGIN=1) for the demo government account "jordan".

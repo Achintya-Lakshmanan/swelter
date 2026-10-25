@@ -1,7 +1,11 @@
-/* Swelter front end: replays precomputed runs on a deck.gl map. Only /api/why is live. */
+/* Swelter front end: replays precomputed runs on a deck.gl map. Only /api/why (and the sign-in/Ask APIs) are live. */
 (() => {
-  const HAZARD_COLOR = { heat: "#f2994a", cold: "#7fc8ff" };
-  const LEVEL_RGB = [[47, 143, 122], [242, 201, 76], [242, 153, 74], [235, 77, 91]];
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const HAZARD_COLOR = { heat: css("--heat") || "#ff6a3d", cold: css("--cold") || "#9fd8ff" };
+  const LOW = hex(css("--dot-low") || "#7d8794");
+  // index 0 = lower predicted risk (quiet), 2 = elevated (the hazard's own colour)
+  const LEVEL_RGB = new Proxy([], { get: (_, l) => (l === "length" ? 4 : +l >= 2 ? hex(HAZARD_COLOR[state.hazard]) : LOW) });
   const LEVEL_NAME = ["Lower predicted risk", "", "Elevated predicted risk", ""];
   const ACT = {
     sleep: ["Sleep", "z"], home: ["Home", "⌂"], commute: ["Travel", "→"], work_indoor: ["Work", "W"],
@@ -207,9 +211,9 @@
       case "heat": {
         // overall heat sets the strength; the city's Heat Exposure Index offset (-4..+4 °F) shows where it's worst
         const a = Math.max(0, Math.min(1, (I - 84) / 26)), u = (uhi + 4) / 8;
-        return [240, 140 - 100 * u, 60 - 40 * u, a * (10 + 120 * u * u)];
+        return [255, 120 - 80 * u, 50 - 30 * u, a * (6 + 80 * u * u)];
       }
-      case "cold": { const v = I - wind, a = Math.max(0, Math.min(1, (32 - v) / 50)); return [120, 190, 255, 8 + 55 * a + (wind ? 35 : 0)]; }
+      case "cold": { const v = I - wind, a = Math.max(0, Math.min(1, (32 - v) / 50)); return [140, 200, 255, 4 + 30 * a + (wind ? 30 : 0)]; }
     }
   }
 
@@ -224,11 +228,11 @@
         getFillColor: (c) => overlayColor(c, I), updateTriggers: { getFillColor: [state.hazard, Math.round(I * 4)] },
       }),
       new deck.PathLayer({
-        id: "water", data: water, getPath: (d) => d.p, getColor: [70, 140, 230, 150],
+        id: "water", data: water, getPath: (d) => d.p, getColor: [70, 120, 190, 90],
         getWidth: (d) => (d.c === "river" ? 40 : 12), widthMinPixels: 1,
       }),
       new deck.PathLayer({
-        id: "roads", data: roads, getPath: (d) => d.p, getColor: [180, 190, 210, 40],
+        id: "roads", data: roads, getPath: (d) => d.p, getColor: [180, 190, 210, 18],
         getWidth: (d) => (d.c === "primary" || d.c === "trunk" ? 14 : 7), widthMinPixels: 0.6,
       }),
       new deck.ScatterplotLayer({
@@ -249,16 +253,16 @@
       new deck.ScatterplotLayer({
         id: "residents", data: { length: n }, pickable: true,
         getPosition: (_, { index }) => residentPos(index, t),
-        getRadius: (_, { index }) => (index === sel ? 70 : 32), radiusMinPixels: 2.8, radiusMaxPixels: 10,
+        getRadius: (_, { index }) => (index === sel ? 70 : levelAt(index, t) ? 40 : 28), radiusMinPixels: 2.6, radiusMaxPixels: 10,
         getFillColor: (_, { index }) => {
           const l = levelAt(index, t), c = LEVEL_RGB[l];
           const dim = grp && !M.residents[index].groups.includes(grp);
-          const a = dim ? 25 : l === 0 ? 150 : 235;
+          const a = dim ? 20 : l === 0 ? 110 : 255;
           return [c[0], c[1], c[2], a];
         },
         stroked: true, lineWidthMinPixels: 1,
         getLineColor: (_, { index }) => (index === sel ? [255, 255, 255, 255] : [0, 0, 0, 0]),
-        updateTriggers: { getPosition: frame, getFillColor: [frame, grp], getRadius: sel, getLineColor: sel },
+        updateTriggers: { getPosition: frame, getFillColor: [frame, grp], getRadius: [sel, frame], getLineColor: sel },
         onClick: (info) => { state.selected = info.index; renderInspector(); redraw(); },
         onHover: (info) => showTip(info),
       }),
@@ -266,15 +270,15 @@
         id: "shelter-priorities", data: prioritySites, pickable: true,
         getPosition: (s) => [s.lon, s.lat], getRadius: 140, radiusMinPixels: 13, radiusMaxPixels: 24,
         stroked: true, lineWidthMinPixels: 2,
-        getFillColor: (s) => s.id === window.swelterShelters?.selected ? [240, 241, 241, 255] : [139, 207, 195, 255],
-        getLineColor: [16, 19, 20, 255], updateTriggers: { getFillColor: window.swelterShelters?.selected },
+        getFillColor: (s) => s.id === window.swelterShelters?.selected ? [255, 255, 255, 255] : [14, 15, 17, 235],
+        getLineColor: [255, 255, 255, 255], updateTriggers: { getFillColor: window.swelterShelters?.selected },
         onClick: ({ object }) => { if (object) window.swelterShelters.select(object.id); },
       }),
       new deck.TextLayer({
         id: "shelter-priority-ranks", data: prioritySites,
         getPosition: (s) => [s.lon, s.lat], getText: (s) => String(s.rank),
-        getColor: [16, 19, 20, 255], getSize: 13, fontWeight: 700,
-        fontFamily: "Inter, sans-serif",
+        getColor: (s) => s.id === window.swelterShelters?.selected ? [14, 15, 17, 255] : [255, 255, 255, 255], getSize: 13, fontWeight: 700,
+        fontFamily: css("--font-ui") || "sans-serif", updateTriggers: { getColor: window.swelterShelters?.selected },
       }),
     ];
   }
@@ -338,36 +342,50 @@
       r.respiratory ? "asthma/COPD" : null, r.flood_zone ? "flood-prone block" : null, !r.heat ? "no reliable heat" : null,
       r.poverty ? "low income" : null,
     ].filter(Boolean);
-    const hue = ["#f2994a", "#5ad1e6", "#a78bfa", "#5fd3a5", "#f2c94c"][i % 5];
     const nowH = Math.min(Math.floor(state.t - 6), 16);
     $("#insp-body").innerHTML = `
       <div class="persona-head">
-        <div class="avatar" style="background:${hue}">${r.name[0]}</div>
-        <div><div class="persona-name">${r.name}, ${r.age}</div>
+        <div class="avatar" aria-hidden="true">${r.name[0]}</div>
+        <div><h2 class="persona-name" id="insp-title">${r.name}, ${r.age}</h2>
         <div class="persona-sub">${ROLE[r.role]} · ${r.tract_name}</div></div>
+      </div>
+      <div class="persona-figure"><b>${personal.risk.toFixed(1)}</b><span>predicted danger hours today${state.iv === "refuge" ? ` · ${personal.covered.toFixed(1)} within reach of an open site` : ""}</span></div>
+      ${timeline(rows)}
+      <div class="tl-hours">${M.hours.map((h) => `<span>${h % 3 === 0 ? ((h + 11) % 12) + 1 : ""}</span>`).join("")}</div>
+      <div class="why-box">
+        <button class="why-btn" id="why-btn">Why did ${r.name} spend the day this way?</button>
+        <div class="why-text" id="why-text" aria-live="polite"></div>
       </div>
       <div class="chips">${groups.map((g) => `<span class="chip hot">${M.groups[g]}</span>`).join("")}
         ${traits.map((t) => `<span class="chip">${t}</span>`).join("")}
         <span class="chip">${flags & 1 ? "heard the warning" : "missed the warning"}</span></div>
-      <div class="trace">Traces to <b>${r.source}</b><ul>${Object.entries(r.trace)
-        .filter(([k]) => k !== (state.hazard === "cold" ? "day_summer" : "day_winter")).map(([, t]) => `<li>${t}</li>`).join("")}</ul></div>
-      <p class="hint">Baseline routine; opening sites does not assume this resident attends.</p>
-      <div class="tl-label"><span>ML-predicted risk</span><span>${personal.risk.toFixed(1)} expected h · ${personal.covered.toFixed(1)} within reach</span></div>
-      ${timeline(rows)}
-      <div class="tl-hours">${M.hours.map((h) => `<span>${h % 3 === 0 ? ((h + 11) % 12) + 1 : ""}</span>`).join("")}</div>
-      <div class="steps">${rows.map((d) => `<div class="step"><span class="h">${((d.hour + 11) % 12) + 1}${d.hour < 12 ? "a" : "p"}</span>
-        <span><span style="color:rgb(${LEVEL_RGB[d.lvl]})">●</span> ${ACT[d.act][0]} · ${d.place}<div class="why">${d.why}</div></span></div>`).join("")}</div>
+      <p class="hint">Baseline routine: opening sites does not assume this resident attends.</p>
+      <details class="steps-d"><summary>Hour by hour</summary><div class="steps">${rows.map((d) => `<div class="step"><span class="h">${((d.hour + 11) % 12) + 1}${d.hour < 12 ? "a" : "p"}</span>
+        <span><span style="color:rgb(${LEVEL_RGB[d.lvl]})">●</span> ${ACT[d.act][0]} · ${d.place}<div class="why">${d.why}</div></span></div>`).join("")}</div></details>
+      <details class="trace"><summary>Where ${r.name} comes from</summary><p>Traces to <b>${r.source}</b></p><ul>${Object.entries(r.trace)
+        .filter(([k]) => k !== (state.hazard === "cold" ? "day_summer" : "day_winter")).map(([, t]) => `<li>${t}</li>`).join("")}</ul></details>
       `;
     document.querySelectorAll(".timeline .cell").forEach((c) => c.classList.toggle("now", +c.dataset.h === nowH));
+    $("#why-btn").onclick = () => explain(i);
   }
-
-  // ---------- modals ----------
-  function openModal(html) { $("#modal-body").innerHTML = html; $("#modal").showModal(); }
-  function showValidation() {
-    openModal('<h2>Trained-model evaluation</h2><p>Held-out diary groups; targets are simulated baseline danger, not observed health or shelter outcomes.</p><table><tr><th>Model</th><th>Daily MAE</th><th>Danger recall</th><th>Brier</th><th>Constant baseline</th></tr>'+Object.entries(modelData.models).map(([hz,m])=>'<tr><td>'+M.hazards[hz].label+'</td><td>'+m.metrics.daily_hours_mae+' h/person</td><td>'+Math.round(m.metrics.danger_recall*100)+'%</td><td>'+m.metrics.brier+'</td><td>'+m.metrics.constant_baseline_brier+'</td></tr>').join('')+'</table><p>The typical cold-day unseen-weather fold did not beat the constant-risk baseline. Geography is not independently held out. Only three historical days per hazard are available.</p>');
-  }
-  function showMethods() {
-    openModal('<h2>Methods</h2><p>Two trained random forests predict baseline dangerous-exposure probability per resident-hour. The map shows baseline routines with ML risk labels; selected sites do not automatically change resident behavior.</p><p>Real inputs: NOAA weather, city cooling/warming facilities and posted hours, city heat maps. ACS, RECS, CDC PLACES and ATUS inform synthetic residents and routines. Unhoused schedules are assumed and oversampled.</p><p>Standard city opens no model-selected sites. Open sites selects the top 1, 3 or 5 facilities using trained-model probabilities and a greedy coverage objective. Old precomputed intervention outcomes are not loaded.</p><p>Priority weights: '+modelData.policy.weights+'. Distance discount: '+modelData.policy.proximity+'. Reach: '+modelData.policy.reach_m+'. Candidate facilities must be open in the relevant hour.</p><p>Risk-hours sum danger probabilities. Within-reach risk is access opportunity, not prevented exposure. Capacity, route safety, attendance and current facility conditions are unverified.</p>');
+  // Live explainer. Always explains the baseline (Standard city) day: that is the routine the map replays.
+  async function explain(i) {
+    const btn = $("#why-btn"), out = $("#why-text");
+    btn.disabled = true; btn.textContent = "Asking…"; out.textContent = "";
+    try {
+      const res = await fetch("api/why", { method: "POST", headers: { "Content-Type": "application/json", ...swelterAuth.headers() },
+        body: JSON.stringify({ scenario: sid("none"), resident: i }) });
+      if (!res.ok) throw Error(res.status);
+      const j = await res.json();
+      if (state.selected !== i) return;
+      out.innerHTML = `<p></p><div class="why-src">${j.source === "offline" ? "Offline explanation from the planner's reason codes" : "Explained live by " + j.source} · grounded only in this resident's stored day</div>`;
+      out.querySelector("p").textContent = j.text;
+      btn.textContent = "Ask again";
+    } catch (e) {
+      out.textContent = e.message === "401" ? "Your sign-in has expired. Sign out and back in, then try again." : "Couldn't reach the explainer. Check that server.py is running, then try again.";
+      btn.textContent = "Try again";
+    }
+    btn.disabled = false;
   }
 
   // ---------- loop ----------
@@ -395,11 +413,14 @@
       const a = Math.sin(i * 12.9898) * 43758.5453, b = Math.sin(i * 78.233) * 12345.6789;
       jitter.push([((a - Math.floor(a)) - 0.5) * 0.0007, ((b - Math.floor(b)) - 0.5) * 0.0005]);
     }
-    // deep links from the About page: ?hazard=smoke&level=extreme&iv=n95 (and &resident=, &hour= below)
+    // deep links from the About page: ?hazard=smoke&level=extreme&iv=n95
     const q = new URLSearchParams(location.search);
     if (M.hazards[q.get("hazard")]) state.hazard = q.get("hazard");
     if (M.hazards[state.hazard].levels[q.get("level")]) state.level = q.get("level");
     if (M.hazards[state.hazard].interventions[q.get("iv")]) state.iv = q.get("iv");
+    // open on the dangerous hours, not 6 AM calm; ?t= overrides
+    state.t = Math.min(22.5, Math.max(6, +q.get("t") || 11));
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) state.playing = false;
     [roads, water] = await Promise.all([fetch("data/roads.json").then((r) => r.json()), fetch("data/waterways.json").then((r) => r.json())]);
 
     // Each label sits at its own time on the slider's 6 AM–11 PM scale (not spread evenly edge to edge).
@@ -410,16 +431,14 @@
       $("#play").classList.toggle("playing", state.playing);
       $("#play").setAttribute("aria-label", state.playing ? "Pause" : "Play");
     };
-    $("#play").classList.add("playing");
+    $("#play").classList.toggle("playing", state.playing);
+    $("#play").setAttribute("aria-label", state.playing ? "Pause" : "Play");
     $("#speed").onchange = (e) => { state.speed = +e.target.value; };
     window.swelter = { state, select: (i) => { state.selected = i; renderInspector(); redraw(); },
       get run() { return run; }, get models() { return modelData; }, get meta() { return M; }, summary: planningSummary,
       setResponse: (iv)=>{if(iv==='none'||iv==='refuge'){state.iv=iv;update();}}, setBudget: (n)=>{if([1,3,5].includes(n)){state.siteBudget=n;update();}}, residentPos, refreshMap: redraw,
       focusSite: (lon, lat) => map.flyTo({ center: [lon, lat], zoom: 14.2, duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 600 }) };
     $("#insp-close").onclick = () => { state.selected = null; $("#inspector").hidden = true; redraw(); };
-    $("#btn-methods").onclick = showMethods;
-    $("#btn-validate").onclick = showValidation;
-    $("#modal-close").onclick = () => $("#modal").close();
     document.addEventListener("keydown", (e) => {
       if (e.defaultPrevented || e.target.closest("button, select, a, [role=button], dialog") || (e.target.tagName === "INPUT" && e.target.type !== "range")) return;
       if (e.code === "Space") { e.preventDefault(); $("#play").click(); }
@@ -429,7 +448,7 @@
     map = new maplibregl.Map({
       container: "map",
       style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-      bounds: [[-75.215, 39.935], [-75.12, 40.03]], fitBoundsOptions: { padding: { top: 70, bottom: 90, left: 10, right: 10 } },
+      bounds: [[-75.215, 39.935], [-75.12, 40.03]], fitBoundsOptions: { padding: innerWidth > 900 ? { top: 40, bottom: 150, left: 300, right: 30 } : { top: 170, bottom: 150, left: 10, right: 10 } },
       attributionControl: { compact: true },
     });
     map.on("error", (e) => { if (!map.isStyleLoaded() && String(e.error?.message || "").match(/style|fetch/i)) map.setStyle(fallbackStyle); });

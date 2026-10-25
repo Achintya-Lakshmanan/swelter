@@ -1,4 +1,4 @@
-/* PREVIEW: the finding line, peak-hour jump and hazard ramp, built on window.swelter (no changes to main.js data). */
+/* The finding line over the map, the peak-hour jump and the hazard ramp, built on window.swelter. */
 (() => {
   const $ = (s) => document.querySelector(s);
   const fmt = (n, d = 0) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -18,7 +18,7 @@
       f.innerHTML = `${sites} ${st.hazard === "heat" ? "cooling" : "warming"} site${sites === 1 ? "" : "s"} reach <b>${fmt(share * 100)}%</b> of predicted danger on ${day}.`;
       $("#finding-sub").innerHTML = `${fmt(s.covered)} of ${fmt(s.risk)} risk-hours. Reachable risk is not prevented exposure: attendance, capacity and routes are unverified.`;
     } else {
-      f.innerHTML = `${M.groups[top.g]} face <b>${fmt(top.per, 1)} h</b> of predicted danger each on ${day}.`;
+      f.innerHTML = `${M.groups[top.g]}: <b>${fmt(top.per, 1)} h</b> of predicted danger per person on ${day}.`;
       $("#finding-sub").innerHTML = `${fmt(s.risk)} predicted risk-hours across ${fmt(s.n)} synthetic residents. <button class="link" id="try-sites">Open ${st.siteBudget} ${st.hazard === "heat" ? "cooling" : "warming"} sites</button>`;
       $("#try-sites").onclick = () => app.setResponse("refuge");
     }
@@ -35,5 +35,5 @@
       `<span class="ramp-range">${fmt(cold ? hi : lo)}–${fmt(cold ? lo : hi)}°F</span>`;
     document.documentElement.dataset.hazard = st.hazard;
   }
-  document.addEventListener("swelter:scenario", () => requestAnimationFrame(render));
+  document.addEventListener("swelter:scenario", render);
 })();
