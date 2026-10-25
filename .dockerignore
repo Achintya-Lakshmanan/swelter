@@ -1,0 +1,10 @@
+.venv
+data
+ios
+docs
+.git
+.claude
+.taste-skill
+.playwright-cli
+scripts
+*.mp4

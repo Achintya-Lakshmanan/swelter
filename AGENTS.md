@@ -11,14 +11,14 @@ the demo video and slides).
 
 Swelter is a disaster what-if simulator for Philadelphia. A planner picks a hazard (heatwave, wildfire smoke, flash
 flood, winter storm), a severity (each one a real day on record) and a city response. The map replays that day
-(6 AM–10 PM) for 1,560 synthetic residents built from Census tracts and real time-use diaries, coloured by exposure.
+(6 AM–10 PM) for 20,000 synthetic residents built from Census tracts and real time-use diaries, coloured by exposure.
 A compare panel shows dangerous hours per group against doing nothing; clicking a resident shows their day and a
 live "why" explanation. All 48 runs (4 hazards × 3 levels × 4 responses) are precomputed; only `/api/why` is live.
 
 ## Run it
 
 ```bash
-uv run server.py            # http://localhost:8000 (map) and /about.html (showcase page)
+SWELTER_DEV_LOGIN=1 uv run --env-file .env server.py   # http://localhost:8000 (map, government sign-in) and /about.html (public)
 ```
 
 Deep links: `/?hazard=smoke&level=extreme&iv=n95` (hazard: heat|smoke|flood|cold; level: moderate|severe|extreme;
@@ -51,6 +51,15 @@ Claude; without it the server answers from the planner's reason codes.
 - About page redesigned (passes the taste-skill lint and inspector: 0 FAIL).
 - Web Interface Guidelines pass on the map: aria-pressed on scenario buttons, live play/pause label, focus ring.
 
+## The iPhone app (built Oct 24)
+
+Everyone signs in with Auth0. Residents see the city's cooling and warming sites with crowd levels and can ask for
+help; responders (an organiser grants the role in Auth0) get a pop-up for each new request, accept it and navigate
+there. The demo uses two demo accounts: Kayla (the simulator's resident #1484) and Marisol Rivera (responder). The code is in `ios/` (SwiftUI, XcodeGen) and `backend/` (API served by
+`server.py`). For how to run it, where every number comes from, the data gaps, sponsor setup and what's unverified,
+read `docs/iphone-app.md`. The plan is in `docs/iphone-app-plan.md`, and the designs are on the Claude Design
+canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
+
 ## Open work, roughly in priority order
 
 1. **LLM planner has never run against the real API** (no key on the dev machine). With a key:
@@ -59,7 +68,7 @@ Claude; without it the server answers from the planner's reason codes.
 2. **Live "why" with a key**: check `/api/why` answers with Claude and stays grounded in the resident's facts.
 3. **Research track export**: CSV of a run (one row per resident per hour) plus a short methods note download.
    Not built yet.
-4. **Sponsor prizes** (see CLAUDE.md): ElevenLabs spoken "why", Vultr hosting, GoDaddy demo domain. None started.
+4. **Sponsor keys**: Auth0 (tenant dev-ml8dvjy6kigpgvxb), Tiger Data, Gemini, ElevenLabs and Vultr are live. **Live server: https://144-202-2-216.sslip.io/** (Vultr vc2-1c-2gb, New York, $10/mo; `deploy/vultr.sh 144.202.2.216` pushes new code; the URL is in the Auth0 planner app; the phone build points at it via `SWELTER_API_BASE`). GoDaddy is still open: point an A record at the IP and pass that name to `deploy/vultr.sh`.
 5. **Demo**: 2-minute video and slides; demo opens on the map, record heat day, then "Show me someone whose day
    changed".
 6. `image-to-code` skill is installed but needs an image-generation tool, so it was not used.
@@ -104,6 +113,18 @@ Claude; without it the server answers from the planner's reason codes.
 
 ## Resident UI cleanup — Oct 25
 - Removed the resident risk explanation/Listen section and priority-resident button/handler. Direct map-dot inspection remains. The sidebar hint now explains population categories, examples and how to clear the highlight.
+
+## Auth0 gate, Ask chat, SQL store — Oct 25 (branch iphone-app)
+- Merged main's new dashboard into iphone-app. The planner page sits behind the Auth0 government gate (`app/auth.js`;
+  demo account Jordan Ellis with `SWELTER_DEV_LOGIN=1`). Static data files are still public; the gate is the UI and the APIs.
+- **Ask** (top bar): preset demo questions or free text → `POST /api/ask` (government only) → Gemini Flash writes one
+  SQL query (`backend/ask.py`) → `backend/simdb.py` checks it (single SELECT, deny-list, 500-row cap, 8 s) and runs it
+  read-only → Gemini answers from the rows. Answers show model, engine, SQL and rows.
+- Simulation tables (heat/cold × 3 days, 2,040,000 resident-hours at 20,000 residents): Tiger Data with `DATABASE_URL`
+  (schema `sim`, hypertable on `ts`), else `data/simulation.db`. Loaded on first question or `scripts/load_sql.py`.
+  Not yet run against a real Tiger Data service (no `DATABASE_URL` on this machine).
+- Scaling: `simulate.py --residents 10000` takes ~6 s per run (2.2 MB run JSON, 11 MB meta.json); the browser replay
+  is the limit past ~10–20k, SQL aggregates are not. Scaling also needs `train_shelters.py` re-run for risk matrices.
 
 ## Further sidebar cleanup — Oct 25
 - Removed hourly coverage disclosure/table/note, population-category guidance, historical context paragraph, shelter planning heading/intro and duplicate open-sites action. Standard city hides the empty site section; City response still opens the selected-site list and map markers.
