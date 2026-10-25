@@ -1,6 +1,7 @@
-"""The dashboard's Ask chat: a planner's question → Gemini writes one SQL query over the simulation tables
-(backend/simdb.py) → the server runs it read-only → Gemini answers from the rows. The answer comes back with the SQL
-and the rows so a judge can check it. Government accounts only (backend/api.py).
+"""The dashboard's Ask chat: a conversation with Gemini about the simulation. Gemini answers from the conversation
+when it can and calls one tool, run_sql, when it needs numbers: a read-only SELECT over the simulation tables
+(backend/simdb.py). Every query it ran comes back with its rows so a judge can check the answer. Government accounts
+only (backend/api.py).
 
 Env: GEMINI_API_KEY, optional GEMINI_SQL_MODEL (default gemini-3.5-flash)."""
 import json
@@ -16,6 +17,7 @@ MODEL = os.environ.get("GEMINI_SQL_MODEL", "gemini-3.5-flash")
 # Flash, quick; Flash-Lite only if Flash is busy, slow or rate-limited.
 MODELS = [MODEL, "gemini-3.5-flash-lite"]
 ROWS_TO_MODEL = 80
+MAX_QUERIES = 4  # per reply
 
 
 def enabled():
@@ -65,20 +67,20 @@ aliases. Booleans are {"true/false" if simdb.PG else "stored as 1/0"}. Distances
 111000 * sqrt(power(lat1 - lat2, 2) + power((lon1 - lon2) * 0.77, 2)) metres."""
 
 
-def gemini(contents, system, schema=None, temperature=0.1):
-    """→ (parsed reply, model that answered)."""
-    cfg = {"temperature": temperature, "thinkingConfig": {"thinkingLevel": "low"}}
-    if schema:
-        cfg |= {"responseMimeType": "application/json", "responseSchema": schema}
-    body = json.dumps({"systemInstruction": {"parts": [{"text": system}]}, "contents": contents,
-                       "generationConfig": cfg}).encode()
+def gemini(contents, system, tools=None, final=False, models=None):
+    """→ (the model's content, model that answered). final=True forbids tool calls so the model has to answer."""
+    cfg = {"temperature": 0.3, "thinkingConfig": {"thinkingLevel": "low"}}
+    req_body = {"systemInstruction": {"parts": [{"text": system}]}, "contents": contents, "generationConfig": cfg}
+    if tools:
+        req_body |= {"tools": tools, "toolConfig": {"functionCallingConfig": {"mode": "NONE" if final else "AUTO"}}}
+    body = json.dumps(req_body).encode()
     err = None
-    for model in MODELS:
+    for model in models or MODELS:
         req = urllib.request.Request(
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
             data=body, headers={"Content-Type": "application/json", "x-goog-api-key": KEY})
         try:
-            with urllib.request.urlopen(req, timeout=20) as r:
+            with urllib.request.urlopen(req, timeout=25) as r:
                 out = json.load(r)
         except urllib.error.HTTPError as e:
             err = f"Gemini {e.code} ({model}): {e.read()[:200].decode(errors='replace')}"
@@ -86,75 +88,117 @@ def gemini(contents, system, schema=None, temperature=0.1):
                 continue
             raise RuntimeError(err)
         except TimeoutError:
-            err = f"Gemini ({model}) took over 20 s"
+            err = f"Gemini ({model}) took over 25 s"
             continue
-        text = "".join(p.get("text", "") for p in out["candidates"][0]["content"].get("parts", [])).strip()
-        return (json.loads(text) if schema else text), model
+        cand = (out.get("candidates") or [{}])[0]
+        return cand.get("content") or {"role": "model", "parts": []}, model
     raise RuntimeError(err)
 
 
-SQL_SCHEMA = {"type": "OBJECT", "properties": {
-    "sql": {"type": "STRING", "description": "The query, or empty if the data can't answer the question"},
-    "reason": {"type": "STRING", "description": "If sql is empty: why the tables can't answer it"}},
-    "required": ["sql"]}
+TOOLS = [{"functionDeclarations": [{
+    "name": "run_sql",
+    "description": "Run one read-only SELECT over the simulation tables and get the rows back. Use it whenever the "
+                   "answer needs numbers, names or comparisons from the data; you may call it again to refine.",
+    "parameters": {"type": "OBJECT", "properties": {
+        "sql": {"type": "STRING", "description": "One SELECT (CTEs allowed), no semicolon, no comments"},
+        "purpose": {"type": "STRING", "description": "A few words on what this query checks"}},
+        "required": ["sql"]}}]}]
 
 
 def context_line(sc):
     if not sc:
         return ""
     sid = f"{sc.get('hazard')}_{sc.get('level')}"
-    return (f"\nThe planner is looking at scenario_id '{sid}' on the dashboard"
+    return (f"\n\nThe planner is looking at scenario_id '{sid}' on the dashboard"
             + (f" with the top {sc.get('budget')} sites opened" if sc.get("iv") == "refuge" else "")
-            + ". 'This scenario' or 'today' means that one.")
+            + ". 'This scenario', 'here' or 'today' means that one.")
 
 
-def write_sql(question, history, scenario, error=None):
+def system_prompt(scenario):
+    return f"""You are Swelter's analyst, chatting with a city emergency planner about a simulation of synthetic
+Philadelphia residents living through real historical heat and winter-storm days. Hold a normal conversation: greet,
+explain what the simulation and its models are, clarify, and follow up on earlier answers from what is already in the
+conversation. Greetings, what-can-you-do, how the models work and the list of scenarios need no query (the notes
+below already list the scenarios and groups). When the answer needs data you don't already have, call run_sql (several times if it helps: e.g. a
+total, then a breakdown). Never guess or invent numbers; every figure you state must come from a query result in this
+conversation. If the tables can't answer something, say what they can show instead.
+
+Answer style: lead with the direct answer and the key numbers, then the inference a planner would act on (who is
+most exposed, when, where, what an extra site buys). 2-6 sentences; short plain paragraphs, no markdown, no tables.
+Name places, groups and hours concretely; write hours as clock times (hour 18 = 6 PM). Keep people and
+resident-hours apart. Say "synthetic" or "simulated" where it matters: counts are not population estimates. Don't
+mention SQL, tables or column names unless the planner asks how you got a number.{context_line(scenario)}
+
+{schema_notes()}"""
+
+
+def _jsonable(v):
+    return json.loads(json.dumps(v, default=str))
+
+
+def run_tool(args):
+    """→ (what the model sees, what the page shows)."""
+    sql = (args.get("sql") or "").strip()
+    try:
+        cols, rows = simdb.query(sql)
+    except Exception as e:
+        msg = str(e)[:300]
+        return {"error": msg, "hint": "Fix the query and call run_sql again."}, {"sql": sql, "error": msg}
+    truncated = len(rows) > simdb.MAX_ROWS
+    rows = rows[:simdb.MAX_ROWS]
+    shown = [dict(zip(cols, r)) for r in rows[:ROWS_TO_MODEL]]
+    seen = {"row_count": len(rows), "truncated": truncated, "rows": _jsonable(shown)}
+    if len(rows) > ROWS_TO_MODEL:
+        seen["note"] = f"first {ROWS_TO_MODEL} of {len(rows)} rows shown; aggregate further if you need all of them"
+    return seen, {"sql": sql, "purpose": args.get("purpose", ""), "columns": cols, "rows": _jsonable(rows[:100]),
+                  "row_count": len(rows), "truncated": truncated}
+
+
+def past_turns(history):
+    """Earlier turns as plain text; each answer notes the queries behind it so follow-ups can build on them."""
     contents = []
-    for h in history[-3:]:
-        contents += [{"role": "user", "parts": [{"text": h["question"]}]},
-                     {"role": "model", "parts": [{"text": json.dumps({"sql": h.get("sql", "")})}]}]
-    text = question + context_line(scenario)
-    if error:
-        text += f"\n\nYour previous query failed:\n{error['sql']}\nError: {error['message']}\nWrite a corrected query."
-    contents.append({"role": "user", "parts": [{"text": text}]})
-    system = ("You turn a city emergency planner's question into one SQL query over a disaster simulation "
-              "database.\n\n" + schema_notes())
-    return gemini(contents, system, SQL_SCHEMA)[0]
-
-
-ANSWER_SYSTEM = """You answer a city emergency planner's question from the result of a SQL query over a simulation
-of synthetic Philadelphia residents on real historical weather days. Use only the rows given. 2-4 plain sentences,
-lead with the direct answer and the key numbers; name places, groups and hours concretely. Say "synthetic residents"
-or "simulated" where it matters (counts are not population estimates). If rows are empty, say no residents matched.
-Keep people and resident-hours apart as the column names say. Write hours as clock times (hour 18 = 6 PM).
-No markdown, no lists, don't mention SQL or column names."""
+    for h in history[-8:]:
+        if not isinstance(h, dict) or not h.get("question"):
+            continue
+        text = str(h.get("answer") or "")[:1500]
+        sqls = [q for q in (h.get("sql") or []) if isinstance(q, str) and q][:MAX_QUERIES]
+        if sqls:
+            text += "\n\n[Queries behind this answer:\n" + "\n".join(sqls) + "]"
+        contents += [{"role": "user", "parts": [{"text": str(h["question"])[:500]}]},
+                     {"role": "model", "parts": [{"text": text or "(no answer)"}]}]
+    return contents
 
 
 def answer(question, history=(), scenario=None):
     if not KEY:
         return {"error": "Ask is off: set GEMINI_API_KEY in .env and restart the server."}
     simdb.ensure()
-    history = [h for h in history if isinstance(h, dict) and h.get("question")]
-    plan, error = write_sql(question, history, scenario), None
-    sql = (plan.get("sql") or "").strip()
-    if not sql:
-        return {"answer": plan.get("reason") or "The simulation data can't answer that.", "sql": "", "columns": [],
-                "rows": [], "model": MODEL, "engine": simdb.engine()}
-    for attempt in range(2):
-        try:
-            cols, rows = simdb.query(sql)
-            break
-        except Exception as e:
-            if attempt:
-                return {"answer": f"I couldn't build a working query for that ({e}). Try rephrasing.", "sql": sql,
-                        "columns": [], "rows": [], "model": MODEL, "engine": simdb.engine()}
-            error = {"sql": sql, "message": str(e)[:300]}
-            sql = (write_sql(question, history, scenario, error).get("sql") or "").strip()
-    truncated = len(rows) > simdb.MAX_ROWS
-    rows = rows[:simdb.MAX_ROWS]
-    shown = [dict(zip(cols, r)) for r in rows[:ROWS_TO_MODEL]]
-    prompt = (f"Question: {question}\nQuery result ({len(rows)} rows"
-              + (f", first {ROWS_TO_MODEL} shown" if len(rows) > ROWS_TO_MODEL else "") + f"):\n{json.dumps(shown)}")
-    text, model = gemini([{"role": "user", "parts": [{"text": prompt}]}], ANSWER_SYSTEM, temperature=0.2)
-    return {"answer": text, "sql": sql, "columns": cols, "rows": rows[:100], "row_count": len(rows),
-            "truncated": truncated, "model": model, "engine": simdb.engine()}
+    system = system_prompt(scenario)
+    contents = past_turns(history) + [{"role": "user", "parts": [{"text": question}]}]
+    queries, models, model = [], None, MODEL
+    text = lambda c: "".join(p.get("text", "") for p in c.get("parts", []) if not p.get("thought")).strip()
+    for round_ in range(MAX_QUERIES + 1):
+        content, model = gemini(contents, system, TOOLS, final=round_ == MAX_QUERIES, models=models)
+        # Stay on the model that started this reply: its thought signatures are in the contents from here on.
+        models = MODELS[MODELS.index(model):]
+        calls = [p["functionCall"] for p in content.get("parts", []) if "functionCall" in p]
+        if not calls:
+            reply = text(content)
+            if not reply and queries:  # tools done but no words: ask once more for the answer itself
+                contents.append({"role": "user", "parts": [{"text": "Answer my question now from those results."}]})
+                content, model = gemini(contents, system, TOOLS, final=True, models=models)
+                reply = text(content)
+            return {"answer": reply or "I couldn't put an answer together for that. Try rephrasing.",
+                    "queries": queries, "model": model, "engine": simdb.engine()}
+        contents.append(content)  # verbatim, with Gemini's thought signatures
+        replies = []
+        for call in calls:
+            seen, shown = run_tool(call.get("args") or {}) if call.get("name") == "run_sql" else \
+                ({"error": "unknown tool"}, None)
+            if shown:
+                queries.append(shown)
+            reply = {"name": call.get("name"), "response": seen}
+            if call.get("id"):
+                reply["id"] = call["id"]
+            replies.append({"functionResponse": reply})
+        contents.append({"role": "user", "parts": replies})

@@ -33,7 +33,7 @@
   const sid = (iv = state.iv) => `${state.hazard}_${state.level}_${iv}`;
 
   async function loadRun(id) {
-    if (!runCache.has(id)) runCache.set(id, fetch(`data/runs/${id}.json`).then((r) => r.json()).then(decode));
+    if (!runCache.has(id)) runCache.set(id, fetch(`data/runs/${id}.json?v=20k`).then((r) => r.json()).then(decode));
     return runCache.get(id);
   }
   function decode(r) {
@@ -141,7 +141,9 @@
     const svg = $("#spark"), w = 1000, h = 30, I = run.intensity;
     const lo = Math.min(...I), hi = Math.max(...I), span = hi - lo || 1;
     const cold = state.hazard === "cold";
-    const pts = I.map((v, i) => [(i / (I.length - 1)) * w, h - 3 - ((cold ? hi - v : v - lo) / span) * (h - 6)]);
+    // Hour i starts at 6+i on the same 6 AM–11 PM scale as the slider and the playhead; the last hour runs to the end.
+    const pts = I.map((v, i) => [(i / 16.99) * w, h - 3 - ((cold ? hi - v : v - lo) / span) * (h - 6)]);
+    pts.push([w, pts[pts.length - 1][1]]);
     const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
     svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
     svg.innerHTML = `<path d="${d} L ${w} ${h} L 0 ${h} Z" fill="${HAZARD_COLOR[state.hazard]}" opacity=".18"/>` +
@@ -381,7 +383,7 @@
   }
 
   async function init() {
-    [M, modelData] = await Promise.all([fetch("data/meta.json").then(r=>r.json()), fetch("data/shelter_models.json?v=2").then(r=>{if(!r.ok) throw Error("Model results unavailable");return r.json();})]);
+    [M, modelData] = await Promise.all([fetch("data/meta.json?v=20k").then(r=>r.json()), fetch("data/shelter_models.json?v=20k").then(r=>{if(!r.ok) throw Error("Model results unavailable");return r.json();})]);
     M.hazards = Object.fromEntries(["heat", "cold"].map(hz=>[hz, {...M.hazards[hz], interventions: {
       none: {label:"Standard city", desc:"Baseline routines with no model-selected sites opened."},
       refuge: {label:hz==='heat'?"Open cooling sites":"Open warming sites", desc:"Trained-model risk predictions select sites; metrics measure potential access, not guaranteed exposure reduction."}
@@ -400,7 +402,8 @@
     if (M.hazards[state.hazard].interventions[q.get("iv")]) state.iv = q.get("iv");
     [roads, water] = await Promise.all([fetch("data/roads.json").then((r) => r.json()), fetch("data/waterways.json").then((r) => r.json())]);
 
-    $("#ticks").innerHTML = [6, 9, 12, 15, 18, 21].map((h) => `<span>${fmtHour(h).replace(":00", "")}</span>`).join("");
+    // Each label sits at its own time on the slider's 6 AM–11 PM scale (not spread evenly edge to edge).
+    $("#ticks").innerHTML = [6, 9, 12, 15, 18, 21].map((h) => `<span style="left:${((h - 6) / 16.99) * 100}%">${fmtHour(h).replace(":00", "")}</span>`).join("");
     $("#time").oninput = (e) => { state.t = +e.target.value; redraw(); };
     $("#play").onclick = () => {
       state.playing = !state.playing;

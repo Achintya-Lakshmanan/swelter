@@ -19,7 +19,7 @@ Responders (role responder):
   POST /api/responder/sites/<id>/report {level: quiet|busy|full}
   GET  /api/responder/risk[?hour=…&replay=…]
 Government (role government):
-  POST /api/ask                         {question, history?: [{question, sql}], scenario?: {hazard, level, iv, budget}}
+  POST /api/ask                         {question, history?: [{question, answer, sql[]}], scenario?: {hazard, level, iv, budget}}
                                         → {answer, sql, columns, rows, row_count, model, engine} (Gemini text-to-SQL)
 """
 import hmac
@@ -93,7 +93,9 @@ def get_live(q):
                               "unit": r["unit"], "source": r["source"]}
     if s["replay"]:
         d = s["sim_date"]
-        out |= {"conditions": forecast.replay_conditions(s["scenario"], s["hour"]), "alerts": [], "forecast": [],
+        alert = forecast.replay_alert(s["scenario"], d)
+        out |= {"conditions": forecast.replay_conditions(s["scenario"], s["hour"]), "alerts": [alert] if alert else [],
+                "forecast": [],
                 "simulated": {"date": d.isoformat(), "label": f"{d:%a, %b} {d.day}, {d.year}"},
                 "note": "Replaying a real recorded day. Not today's weather."}
         out["danger"] = forecast.danger(s["hazard"], out["conditions"]["value"])

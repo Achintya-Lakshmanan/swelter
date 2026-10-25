@@ -11,7 +11,7 @@ the demo video and slides).
 
 Swelter is a disaster what-if simulator for Philadelphia. A planner picks a hazard (heatwave, wildfire smoke, flash
 flood, winter storm), a severity (each one a real day on record) and a city response. The map replays that day
-(6 AM–10 PM) for 1,560 synthetic residents built from Census tracts and real time-use diaries, coloured by exposure.
+(6 AM–10 PM) for 20,000 synthetic residents built from Census tracts and real time-use diaries, coloured by exposure.
 A compare panel shows dangerous hours per group against doing nothing; clicking a resident shows their day and a
 live "why" explanation. All 48 runs (4 hazards × 3 levels × 4 responses) are precomputed; only `/api/why` is live.
 
@@ -120,7 +120,7 @@ canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
 - **Ask** (top bar): preset demo questions or free text → `POST /api/ask` (government only) → Gemini Flash writes one
   SQL query (`backend/ask.py`) → `backend/simdb.py` checks it (single SELECT, deny-list, 500-row cap, 8 s) and runs it
   read-only → Gemini answers from the rows. Answers show model, engine, SQL and rows.
-- Simulation tables (heat/cold × 3 days, 159,120 resident-hours at 1,560 residents): Tiger Data with `DATABASE_URL`
+- Simulation tables (heat/cold × 3 days, 2,040,000 resident-hours at 20,000 residents): Tiger Data with `DATABASE_URL`
   (schema `sim`, hypertable on `ts`), else `data/simulation.db`. Loaded on first question or `scripts/load_sql.py`.
   Not yet run against a real Tiger Data service (no `DATABASE_URL` on this machine).
 - Scaling: `simulate.py --residents 10000` takes ~6 s per run (2.2 MB run JSON, 11 MB meta.json); the browser replay

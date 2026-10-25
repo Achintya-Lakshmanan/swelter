@@ -1,3 +1,4 @@
+import CoreLocation
 import Observation
 import SwiftUI
 import UIKit
@@ -24,6 +25,7 @@ final class ResponderData {
                 seen.insert(r.id)
                 incoming = r
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                if model.speakUpdates { Task { await model.speak(spoken(r, from: model.origin)) } }
             }
             risk = try await API.shared.risk(replay: model.replay, hour: model.replay != nil ? model.replayHour : nil)
             error = nil
@@ -38,6 +40,16 @@ final class ResponderData {
             if onDuty { await refresh(model) }
             try? await Task.sleep(for: .seconds(5))
         }
+    }
+
+    /// What the pop-up reads aloud: "New help request. Kayla, Check on someone. 1 person, 65 or older. 1.2 kilometers away."
+    private func spoken(_ r: HelpRequest, from origin: CLLocation) -> String {
+        var parts = ["New help request", headline(r), whoLine(r)].map { $0.replacingOccurrences(of: " · ", with: ", ") }
+        if let c = r.coordinate {
+            let km = origin.distance(from: CLLocation(latitude: c.latitude, longitude: c.longitude)) / 1000
+            parts.append(String(format: "%.1f kilometers away", km))
+        }
+        return parts.joined(separator: ". ") + "."
     }
 
     func reset() {

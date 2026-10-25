@@ -69,9 +69,6 @@ struct CheckInSheet: View {
                     Text("\(prompt.reading) at \(hourLabel(prompt.hour))").font(.title3.bold())
                     Text(prompt.words.prefix(1).uppercased() + prompt.words.dropFirst()).font(.headline).foregroundStyle(Color.danger)
                     if let h = prompt.homeLine { Text(h) }
-                    if model.live?.replay == true, let day = model.live?.conditions.day {
-                        SourceLine(text: "Weather replayed from \(day), the record day at PHL")
-                    }
                 }
                 TimelineView(.periodic(from: .now, by: 1)) { ctx in
                     let left = max(0, Int(prompt.deadline.timeIntervalSince(ctx.date)))

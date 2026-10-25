@@ -50,6 +50,7 @@ def pick_scenario(hazard, today_peak):
     return f"{hazard}_{best}"
 
 
+@lru_cache(maxsize=1024)  # fixed per deploy; recounting 10k residents per site per call took seconds
 def site_forecast(scenario, site_name):
     """Simulated people at this site per hour (6 AM–10 PM) with the city's sites open, or None if outside the
     simulated area."""
@@ -64,7 +65,8 @@ def site_forecast(scenario, site_name):
                 counts[h] += 1
     return {"hours": meta()["hours"], "people": counts, "scenario": f"{scenario}_refuge",
             "real_day": meta()["hazards"][rn["hazard"]]["levels"][rn["level"]]["label"].split(" — ")[-1],
-            "residents_simulated": len(meta()["residents"]), "source": "Swelter simulation (1,560 synthetic residents)"}
+            "residents_simulated": len(meta()["residents"]),
+            "source": f"Swelter simulation ({len(meta()['residents']):,} synthetic residents)"}
 
 
 def risk_grid(scenario, hour, iv="none"):
@@ -137,6 +139,43 @@ def danger(hz, value):
     lv = [max([n for t, n in bands if worse(value, t)], default=0) for bands in BANDS[hz]]
     return {"level": lv[0], "vulnerable_level": lv[1], "words": LEVEL_WORDS[lv[0]],
             "vulnerable_words": LEVEL_WORDS[lv[1]], "hazard": hz, "value": value}
+
+
+def _clock(h):
+    return "midnight" if h % 24 == 0 else "noon" if h == 12 else f"{h % 12 or 12} {'AM' if h % 24 < 12 else 'PM'}"
+
+
+def replay_alert(scenario, sim_date):
+    """The warning a replayed day would carry, in the same shape as a live NWS alert (live.alerts()), built from that
+    day's real hourly readings: event by NWS criteria, in effect over the hours dangerous for vulnerable people."""
+    hz, _ = scenario.split("_")
+    values = replay_hours().get(hz, {}).get(scenario.split("_")[1], {}).get("values")
+    if not values or hz not in BANDS:
+        return None
+    worst = (min if hz == "cold" else max)(values)
+    bad = [h for h, v in enumerate(values) if (danger(hz, v) or {}).get("vulnerable_level", 0) >= 2] or \
+          [values.index(worst)]
+    start, end = bad[0], min(bad[-1] + 1, 24)
+    event, desc, instruction = {
+        "heat": ("Extreme Heat Warning" if worst >= 105 else "Heat Advisory",
+                 f"Dangerously hot conditions with heat index values up to {worst:.0f}°F.",
+                 "Drink plenty of fluids, stay in an air-conditioned room, stay out of the sun, and check up on "
+                 "relatives and neighbors. Go to a cooling center if your home has no air conditioning."),
+        "cold": ("Extreme Cold Warning" if worst <= -10 else "Cold Weather Advisory",
+                 f"Dangerously cold wind chills as low as {worst:.0f}°F.",
+                 "Avoid going outside. If you must, dress in layers and cover exposed skin. Check on older neighbors. "
+                 "Go to a warming center if your home has no heat."),
+        "smoke": ("Air Quality Alert", f"Wildfire smoke with an air quality index up to {worst:.0f}.",
+                  "Stay indoors with windows closed, run a filter if you have one, and wear an N95 mask outside."),
+        "flood": ("Flash Flood Warning", f"Heavy rain of up to {worst:.1f} inches in three hours.",
+                  "Move to higher ground. Do not drive through flooded roads."),
+    }[hz]
+    day = f"{sim_date:%A}"
+    when = f"all day {day}" if (start, end) == (0, 24) else f"from {_clock(start)} to {_clock(end)} {day}"
+    return {"event": event, "headline": f"{event} in effect {when}",
+            "severity": "Extreme" if "Warning" in event else "Moderate", "urgency": "Immediate",
+            "ends": f"{sim_date.isoformat()}T{end % 24:02d}:00", "description": f"{desc} Affected area: Philadelphia.",
+            "instruction": instruction, "hazard": hz, "source": "National Weather Service (simulated day)"}
 
 
 # The demo is told through one simulated resident on the record heat day: Kayla, 75+, Fairhill (tract 175), lives

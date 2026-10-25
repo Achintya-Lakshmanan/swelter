@@ -1,8 +1,9 @@
-/* Ask: planners question the simulation in plain English. The server has Gemini write one read-only SQL query over
-   the simulation tables (Tiger Data or local SQLite), runs it and answers from the rows (backend/ask.py). Each answer
-   shows its SQL and rows. Starts after sign-in (auth.js); government accounts only. */
+/* Ask: a chat with Gemini about the simulation. Gemini answers from the conversation and runs read-only SQL over the
+   simulation tables (Tiger Data or local SQLite) only when it needs data (backend/ask.py). Each answer shows the
+   queries it ran and their rows. Starts after sign-in (auth.js); government accounts only. */
 (() => {
   const PRESETS = [
+    "What can you tell me, and how were these residents built?",
     "Which groups are most at risk on the record heat day compared with a typical hot day?",
     "At what hour does heat risk peak on the record day, and what are at-risk people doing then?",
     "Which census tracts have the most residents in danger in this scenario?",
@@ -21,14 +22,14 @@
     document.body.insertAdjacentHTML("beforeend", `
       <aside class="ask" id="ask" hidden aria-label="Ask the simulation">
         <header class="ask-head">
-          <div><h2>Ask the simulation</h2><p class="muted">Gemini writes SQL over every resident-hour; you see the query and rows.</p></div>
+          <div><h2>Ask the simulation</h2><p class="muted">Chat with Gemini. When it needs numbers it queries every resident-hour, and shows you each query.</p></div>
           <button class="close" id="ask-close" aria-label="Close">×</button>
         </header>
         <div class="ask-log" id="ask-log" aria-live="polite"></div>
         <div class="ask-presets" id="ask-presets"></div>
         <form class="ask-form" id="ask-form">
-          <input id="ask-input" maxlength="500" autocomplete="off" placeholder="Ask about residents, hours, tracts or sites…" aria-label="Question">
-          <button class="ask-send" type="submit">Ask</button>
+          <input id="ask-input" maxlength="500" autocomplete="off" placeholder="Ask anything about the simulation…" aria-label="Message">
+          <button class="ask-send" type="submit">Send</button>
         </form>
       </aside>`);
     $("#btn-ask").onclick = () => toggle();
@@ -50,7 +51,7 @@
     const left = PRESETS.filter((p) => !asked.has(p));
     $("#ask-presets").className = history.length ? "ask-presets compact" : "ask-presets";
     $("#ask-presets").innerHTML = (history.length ? "" : `<p class="ask-label">Try one of these</p>`)
-      + left.slice(0, history.length ? 3 : 7).map((p) => `<button type="button" class="ask-chip">${esc(p)}</button>`).join("");
+      + left.slice(0, history.length ? 3 : 8).map((p) => `<button type="button" class="ask-chip">${esc(p)}</button>`).join("");
     $("#ask-presets").querySelectorAll(".ask-chip").forEach((b) => (b.onclick = () => send(b.textContent)));
   }
 
@@ -68,24 +69,28 @@
     $("#ask-input").value = "";
     $("#ask-presets").innerHTML = "";
     const log = $("#ask-log");
-    log.insertAdjacentHTML("beforeend", `<div class="ask-q">${esc(question)}</div><div class="ask-a pending">Writing a query…</div>`);
+    log.insertAdjacentHTML("beforeend", `<div class="ask-q">${esc(question)}</div><div class="ask-a pending">Thinking…</div>`);
     const out = log.lastElementChild;
     log.scrollTop = log.scrollHeight;
     const s = window.swelter?.state;
     try {
       const res = await fetch("api/ask", {
         method: "POST", headers: { "Content-Type": "application/json", ...swelterAuth.headers() },
-        body: JSON.stringify({ question, history: history.slice(-3),
+        body: JSON.stringify({ question, history: history.slice(-8),
           scenario: s && { hazard: s.hazard, level: s.level, iv: s.iv, budget: s.siteBudget } }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
-      history.push({ question, sql: j.sql });
-      const n = j.row_count ?? j.rows.length;
+      const qs = j.queries || [];
+      history.push({ question, answer: j.answer, sql: qs.map((q) => q.sql) });
       out.classList.remove("pending");
-      out.innerHTML = `<p></p><div class="ask-meta">${esc(j.model)} · ${esc(j.engine)}${j.sql ? ` · ${n.toLocaleString()} row${n === 1 ? "" : "s"}${j.truncated ? "+" : ""}` : ""}</div>
-        ${j.sql ? `<details><summary>SQL and data</summary><pre>${esc(j.sql)}</pre>${table(j.columns, j.rows)}
-          ${n > 25 ? `<p class="muted">First 25 of ${n.toLocaleString()} rows.</p>` : ""}</details>` : ""}`;
+      out.innerHTML = `<p></p><div class="ask-meta">${esc(j.model)}${qs.length ? ` · ${qs.length} ${qs.length === 1 ? "query" : "queries"} on ${esc(j.engine)}` : " · no query needed"}</div>
+        ${qs.map((q, k) => {
+          const n = q.row_count ?? 0;
+          return `<details><summary>${qs.length > 1 ? `Query ${k + 1}: ` : "SQL and data: "}${esc(q.purpose || (q.error ? "failed, retried" : `${n.toLocaleString()} row${n === 1 ? "" : "s"}`))}</summary>
+            <pre>${esc(q.sql)}</pre>${q.error ? `<p class="muted">${esc(q.error)}</p>` : table(q.columns, q.rows)}
+            ${n > 25 ? `<p class="muted">First 25 of ${n.toLocaleString()} rows${q.truncated ? "+" : ""}.</p>` : ""}</details>`;
+        }).join("")}`;
       $("p", out).textContent = j.answer;
     } catch (e) {
       out.classList.remove("pending");

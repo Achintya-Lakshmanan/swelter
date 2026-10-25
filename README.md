@@ -2,7 +2,7 @@
 # Swelter — Philadelphia disaster what-if simulator
 
 Pick Heatwave or Winter storm, a severity, and one of two responses: Standard city or Open cooling/warming sites. The map
-replays a real day (6am–10pm) for 1,560 synthetic Philadelphians, colored by exposure. The app uses two trained random forests for risk predictions and model-driven shelter priorities. Compare predicted risk-hours, site coverage and uncovered risk by group and hour. Click a resident for their persona, baseline routine and a model-grounded explanation.
+replays a real day (6am–10pm) for 20,000 synthetic Philadelphians, colored by exposure. The app uses two trained random forests for risk predictions and model-driven shelter priorities. Compare predicted risk-hours, site coverage and uncovered risk by group and hour. Click a resident for their persona, baseline routine and a model-grounded explanation.
 
 Everything the simulation runs on is real data: the hazard days, the people, their routines, the flood and heat maps,
 and the city's cooling and warming sites. Remaining assumptions are listed in the app's Methods modal.
@@ -50,7 +50,7 @@ python3 scripts/fetch_real.py      # city layers, PLACES, RECS, NOAA, EPA       
 python3 scripts/atus.py            # ATUS diaries -> hourly days                   -> data/atus_diaries.json
 python3 scripts/derive_inputs.py   # real hazard days, RECS/PLACES rates, refuges  -> data/hazard_days.json, inputs.json, ...
 python3 scripts/validate.py        # fit behavior on 2020-21 mobility, test 2022   -> data/behavior_fit.json, app/data/validation.json
-python3 scripts/simulate.py        # 48 runs with the rule planner (~30s)          -> app/data/
+python3 scripts/simulate.py --residents 19940  # 19,940 housed + 60 unhoused = 20,000; 48 runs (~5 min) -> app/data/
 python3 scripts/replay_hours.py     # every hour of the 12 replay days (iPhone app)  -> app/data/replay_hours.json
 ```
 
@@ -115,7 +115,7 @@ The **Shelter priorities** tab is available for heatwaves and winter storms. Cho
 
 Two separate random-forest classifiers predict the probability of baseline simulated dangerous exposure for each resident-hour. Their target comes from stored simulation levels, not observed injuries, demand, or shelter outcomes. Inputs include weather, simulated baseline activity, resident attributes, and local heat/wind modifiers. A greedy coverage optimizer uses those probabilities to rank real facilities by open hours, straight-line access, vulnerability, and proximity. These are priorities among existing facilities, not approved construction locations.
 
-Each hazard has 79,560 examples (1,560 synthetic residents × 17 hourly slots × 3 real historical weather days). All hours and severities sharing an ATUS diary stay in the same train/test group; assumed unhoused schedules are grouped by home anchor. Held-out scores compare against a constant-risk baseline. Separate tests also withhold a weather day and the test diary groups. Final ranking models are refit on all examples after evaluation. Models do not establish real-world or future-event validity; geography is not independently held out.
+Each hazard has 1,020,000 examples (20,000 synthetic residents × 17 hourly slots × 3 real historical weather days). All hours and severities sharing an ATUS diary stay in the same train/test group; assumed unhoused schedules are grouped by home anchor. Held-out scores compare against a constant-risk baseline. Separate tests also withhold a weather day and the test diary groups. Final ranking models are refit on all examples after evaluation. Models do not establish real-world or future-event validity; geography is not independently held out.
 
 Reachable risk-hours sum predicted danger probabilities during opening hours. They are **not hours prevented**. Site coverage is uncapacitated; routes, current operating conditions, accessibility and facility capacity are unverified. Unhoused residents are oversampled, so counts are simulation counts rather than estimates of Philadelphia's population. The optimizer's vulnerability weights and access radii are documented assumptions, not learned effects.
 

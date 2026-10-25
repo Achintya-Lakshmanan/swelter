@@ -109,11 +109,8 @@ struct HazardCard: View {
                         Text(a.event).font(.headline)
                         Text(conditionsLine(live)).font(.subheadline)
                     } else {
-                        Text(live.replay ? (live.conditions.label ?? "Replay") : "No weather alerts for Philadelphia").font(.headline)
+                        Text(live.replay ? (live.conditions.label ?? "Weather alert") : "No weather alerts for Philadelphia").font(.headline)
                         Text(conditionsLine(live)).font(.subheadline)
-                        if live.replay, let day = live.conditions.day {
-                            Text("Weather replayed from \(day), the record day at PHL").font(.caption).opacity(0.85)
-                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -197,22 +194,14 @@ struct AlertDetail: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let live = model.live {
-                        if live.replay {
-                            Card {
-                                Text(live.conditions.label ?? "Replay").font(.headline)
-                                Text(conditionsLine(live))
-                                if let day = live.conditions.day { Text("Recorded on \(day); the app shows it on today's clock.").foregroundStyle(Color.muted) }
-                                if let n = live.conditions.note { Text(n.prefix(1).uppercased() + n.dropFirst()).foregroundStyle(Color.muted) }
-                                SourceLine(text: live.conditions.source ?? "")
-                            }
-                        }
                         ForEach(live.alerts) { a in
                             Card {
                                 Text(a.event).font(.title3.bold())
                                 if let h = a.headline { Text(h).font(.subheadline.weight(.semibold)) }
+                                if live.replay { Text(conditionsLine(live)).font(.subheadline) }
                                 if !a.instruction.isEmpty { Text(a.instruction) }
                                 Text(a.description).font(.callout).foregroundStyle(Color.muted)
-                                SourceLine(text: "National Weather Service")
+                                SourceLine(text: a.source ?? "National Weather Service")
                                 if model.config?.voice == true {
                                     Button {
                                         speaking = true

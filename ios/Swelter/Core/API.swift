@@ -25,7 +25,7 @@ struct Conditions: Decodable {
 struct NWSAlert: Decodable, Identifiable {
     var id: String { event + (ends ?? "") }
     let event: String; let headline: String?; let severity: String?; let ends: String?
-    let description: String; let instruction: String; let hazard: String?
+    let description: String; let instruction: String; let hazard: String?; let source: String?
 }
 
 struct Hourly: Decodable { let time: String; let tempF: Int; let short: String }

@@ -90,7 +90,9 @@ button, select, input { font: inherit; color: inherit; }
 .time-track { position: relative; flex: 1; height: 46px; }
 .spark { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 30px; }
 #time { position: absolute; left: 0; right: 0; bottom: 6px; width: 100%; accent-color: var(--accent); margin: 0; }
-.ticks { position: absolute; left: 0; right: 0; bottom: -8px; display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+.ticks { position: absolute; left: 0; right: 0; bottom: -8px; height: 14px; font-size: 10.5px; color: var(--muted); }
+.ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ticks span:first-child { transform: none; }
 .legend { flex: none; display: flex; gap: 10px; font-size: 12px; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -373,3 +375,4 @@ button, select, input { font: inherit; color: inherit; }
   padding: 10px 12px; font: inherit; font-size: 13px;
 }
 .ask-send { background: var(--accent); color: var(--bg); border: 0; border-radius: 3px; padding: 0 16px; font-weight: 600; cursor: pointer; }
+.ask-a p{white-space:pre-line}

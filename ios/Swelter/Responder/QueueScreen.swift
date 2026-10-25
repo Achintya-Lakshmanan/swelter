@@ -147,6 +147,10 @@ struct RequestDetail: View {
                 ResponderData.shared.replace(request)
                 error = nil
                 if action == "release" { dismiss() }
+                if action == "claim", request.mine == true, model.speakUpdates {
+                    await geocode()
+                    await model.speak(acceptedLine())
+                }
             } catch {
                 self.error = error.localizedDescription
             }
@@ -159,6 +163,19 @@ struct RequestDetail: View {
         let p = try? await CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: c.latitude, longitude: c.longitude)).first
         address = p.map { [$0.subThoroughfare, $0.thoroughfare].compactMap { $0 }.joined(separator: " ") }
             ?? String(format: "%.5f, %.5f", c.latitude, c.longitude)
+    }
+
+    /// Read aloud after accepting: "You're on it. Kayla is at 1234 Market Street, 1.2 kilometers from you. Their note: ..."
+    private func acceptedLine() -> String {
+        let who = request.name ?? "The resident"
+        var line = "You're on it. \(who) is at \(address ?? "the pin on your map")"
+        if let c = request.coordinate {
+            let km = model.origin.distance(from: CLLocation(latitude: c.latitude, longitude: c.longitude)) / 1000
+            line += String(format: ", %.1f kilometers from you", km)
+        }
+        line += "."
+        if let n = request.note, !n.isEmpty { line += " Their note: \(n)." }
+        return line + " Tap Navigate for directions."
     }
 
     private func navigate() {
