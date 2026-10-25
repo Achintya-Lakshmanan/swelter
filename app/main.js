@@ -38,10 +38,13 @@
   const sid = (iv = state.iv) => `${state.hazard}_${state.level}_${iv}`;
 
   async function loadRun(id) {
-    if (!runCache.has(id)) runCache.set(id, fetch(`data/runs/${id}.json?v=20k`).then((r) => r.json()).then(decode));
+    if (!runCache.has(id)) runCache.set(id, Promise.all([
+      fetch(`data/runs/${id}.json?v=20k`).then((r) => r.json()),
+      fetch(`data/micro/${id}.json?v=1`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([r, micro]) => decode(r, micro)));
     return runCache.get(id);
   }
-  function decode(r) {
+  function decode(r, micro) {
     const n = r.steps.length, H = M.hours.length;
     r.place = new Uint16Array(n * H); r.act = new Uint8Array(n * H); r.why = new Uint8Array(n * H);
     r.lvl = new Uint8Array(n * H);
@@ -52,6 +55,14 @@
     }
     // trips: [depart, arrive, fromPlace, toPlace] in clock hours. Departures are the diary respondent's real minute
     // (or early in the hour for moves the hazard rules added); travel time follows the planner's walk/car/transit speeds.
+    // Short trips the hourly plan drops (scripts/micro_trips.py): [resident, depart, back, place] in minutes after 6am,
+    // from the same diary. Map only: exposure and risk stay hourly. Skipped if it would overlap an hourly move.
+    const short = new Map();
+    const m = micro?.trips || [];
+    for (let k = 0; k < m.length; k += 4) {
+      if (!short.has(m[k])) short.set(m[k], []);
+      short.get(m[k]).push(m.slice(k + 1, k + 4));
+    }
     r.trips = [];
     for (let i = 0; i < n; i++) {
       const trips = [];
@@ -64,6 +75,17 @@
         trips.push([dep, arr, r.place[k - 1], r.place[k]]);
         free = arr;
       }
+      for (const [s, e, to] of short.get(i) || []) {
+        const t0 = M.hours[0] + s / 60;
+        let at = r.place[i * H], last = -1;
+        for (const tr of trips) if (tr[1] <= t0 && tr[1] > last) { at = tr[3]; last = tr[1]; }
+        const a1 = t0 + travelMinutes(M.residents[i], M.places[at], M.places[to]) / 60;
+        const back = Math.max(M.hours[0] + e / 60, a1 + 5 / 60);
+        const a2 = back + travelMinutes(M.residents[i], M.places[to], M.places[at]) / 60;
+        if (trips.some(([u0, u1]) => u0 < a2 && t0 < u1)) continue;
+        trips.push([t0, a1, at, to], [back, a2, to, at]);
+      }
+      trips.sort((x, y) => x[0] - y[0]);
       r.trips.push(trips);
     }
     return r;
