@@ -483,7 +483,7 @@
       const a = Math.sin(i * 12.9898) * 43758.5453, b = Math.sin(i * 78.233) * 12345.6789;
       jitter.push([((a - Math.floor(a)) - 0.5) * 0.0007, ((b - Math.floor(b)) - 0.5) * 0.0005]);
     }
-    // deep links from the About page: ?hazard=smoke&level=extreme&iv=n95
+    // deep links from the About page: ?hazard=smoke&level=extreme&iv=n95 (and &resident=, &hour= below)
     const q = new URLSearchParams(location.search);
     if (M.hazards[q.get("hazard")]) state.hazard = q.get("hazard");
     if (M.hazards[state.hazard].levels[q.get("level")]) state.level = q.get("level");
@@ -523,6 +523,13 @@
     map.addControl(deckOverlay);
 
     await update();
+    // ?resident=1484 opens the inspector on one resident (the phone demo's Kayla) at the hour given by ?hour=
+    const rid = parseInt(q.get("resident"), 10);
+    if (rid >= 0 && rid < M.residents.length) {
+      const h = parseInt(q.get("hour"), 10);
+      if (h >= 6 && h <= 22) { state.t = h; $("#time").value = h; state.playing = false; $("#play").classList.remove("playing"); }
+      window.swelter.select(rid);
+    }
     requestAnimationFrame(tick);
   }
   init();

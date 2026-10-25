@@ -17,7 +17,12 @@ uv run server.py
 Open http://localhost:8000. Set `ANTHROPIC_API_KEY` first to make the "Why?" button call Claude live; without
 it the button gives an offline explanation built from the planner's reason codes.
 
-All runs are precomputed in `app/data/`. The server only serves files and `/api/why`.
+All runs are precomputed in `app/data/`. The server serves the files, `/api/why`, and the iPhone app's API.
+
+## iPhone app
+
+A resident and responder app on live city and NWS data lives in `ios/`, served by the same
+`server.py`. Setup, data sources and gaps: `docs/iphone-app.md`.
 
 ## Rebuild the data
 

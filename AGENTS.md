@@ -51,6 +51,15 @@ Claude; without it the server answers from the planner's reason codes.
 - About page redesigned (passes the taste-skill lint and inspector: 0 FAIL).
 - Web Interface Guidelines pass on the map: aria-pressed on scenario buttons, live play/pause label, focus ring.
 
+## The iPhone app (built Oct 24)
+
+Everyone signs in with Auth0. Residents see the city's cooling and warming sites with crowd levels and can ask for
+help; responders (an organiser grants the role in Auth0) get a pop-up for each new request, accept it and navigate
+there. The demo uses two demo accounts: Kayla (the simulator's resident #1484) and Marisol Rivera (responder). The code is in `ios/` (SwiftUI, XcodeGen) and `backend/` (API served by
+`server.py`). For how to run it, where every number comes from, the data gaps, sponsor setup and what's unverified,
+read `docs/iphone-app.md`. The plan is in `docs/iphone-app-plan.md`, and the designs are on the Claude Design
+canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
+
 ## Open work, roughly in priority order
 
 1. **LLM planner has never run against the real API** (no key on the dev machine). With a key:
@@ -59,7 +68,7 @@ Claude; without it the server answers from the planner's reason codes.
 2. **Live "why" with a key**: check `/api/why` answers with Claude and stays grounded in the resident's facts.
 3. **Research track export**: CSV of a run (one row per resident per hour) plus a short methods note download.
    Not built yet.
-4. **Sponsor prizes** (see CLAUDE.md): ElevenLabs spoken "why", Vultr hosting, GoDaddy demo domain. None started.
+4. **Sponsor keys**: Auth0, Tiger Data, ElevenLabs, Gemini, Vultr and GoDaddy are wired but need accounts and keys (see `docs/iphone-app.md`). None has been tested with a real key.
 5. **Demo**: 2-minute video and slides; demo opens on the map, record heat day, then "Show me someone whose day
    changed".
 6. `image-to-code` skill is installed but needs an image-generation tool, so it was not used.

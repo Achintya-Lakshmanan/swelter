@@ -6,3 +6,9 @@ __pycache__/
 .playwright-cli/
 .taste-skill/before/
 .taste-skill/after/
+data/swelter.db*
+data/tts/
+.env
+ios/build/
+ios/*.xcodeproj/
+ios/Swelter/Config.xcconfig

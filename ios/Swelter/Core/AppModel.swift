@@ -1,0 +1,219 @@
+import AVFoundation
+import CoreLocation
+import MapKit
+import Observation
+import SwiftUI
+
+/// City Hall: where the map centres when the phone is outside Philadelphia (e.g. a simulator elsewhere).
+let cityHall = CLLocationCoordinate2D(latitude: 39.9526, longitude: -75.1652)
+
+func inPhilly(_ c: CLLocationCoordinate2D) -> Bool {
+    (39.86...40.14).contains(c.latitude) && (-75.29 ... -74.95).contains(c.longitude)
+}
+
+@Observable
+final class AppModel: NSObject, CLLocationManagerDelegate {
+    // server data
+    var config: AppConfig?
+    var live: Live?
+    var sites: [Site] = []
+    var sitesMode = "cooling"
+    var loadError: String?
+    var loading = false
+
+    // settings (stored)
+    var spanish = UserDefaults.standard.bool(forKey: "spanish") { didSet { UserDefaults.standard.set(spanish, forKey: "spanish") } }
+    /// Demo: replay one of the stored record days instead of today. Always labelled on screen.
+    var replay: String? = UserDefaults.standard.string(forKey: "replay") { didSet { UserDefaults.standard.set(replay, forKey: "replay") } }
+    var replayHour = UserDefaults.standard.object(forKey: "replayHour") as? Int ?? 15 { didSet { UserDefaults.standard.set(replayHour, forKey: "replayHour") } }
+    var crowdCounting = UserDefaults.standard.bool(forKey: "crowdCounting") {
+        didSet { UserDefaults.standard.set(crowdCounting, forKey: "crowdCounting"); updateGeofences() }
+    }
+
+    // resident's open help request
+    var activeRequest: (id: String, secret: String)? = {
+        guard let id = UserDefaults.standard.string(forKey: "reqId"), let s = UserDefaults.standard.string(forKey: "reqSecret") else { return nil }
+        return (id, s)
+    }() {
+        didSet {
+            UserDefaults.standard.set(activeRequest?.id, forKey: "reqId")
+            UserDefaults.standard.set(activeRequest?.secret, forKey: "reqSecret")
+        }
+    }
+
+    // who's signed in (resident or responder)
+    var account: Me?
+    var restoring = true
+    var responderMode: Bool { account?.isResponder == true }
+    var name: String? { account?.profile?.name }
+    var home: Me.Home? { account?.profile?.home }
+
+    // location
+    let manager = CLLocationManager()
+    var here: CLLocation?
+    var authStatus: CLAuthorizationStatus = .notDetermined
+    var hereInPhilly: CLLocation? { here.flatMap { inPhilly($0.coordinate) ? $0 : nil } }
+    var homeLocation: CLLocation? { home.map { CLLocation(latitude: $0.lat, longitude: $0.lon) } }
+    /// Where distances and help requests start: the phone if it's in Philadelphia, else the saved home address.
+    var origin: CLLocation {
+        hereInPhilly ?? homeLocation ?? CLLocation(latitude: cityHall.latitude, longitude: cityHall.longitude)
+    }
+    /// The phone is elsewhere (or has no fix) and the app is using the saved home address.
+    var atHome: Bool { hereInPhilly == nil && home != nil && (here != nil || authStatus == .denied) }
+    var outsidePhilly: Bool { hereInPhilly == nil && home == nil && here != nil }
+    /// Where a help request is sent from, if anywhere.
+    var helpLocation: CLLocation? { hereInPhilly ?? (here != nil || authStatus == .denied ? homeLocation : nil) }
+
+    private var player: AVAudioPlayer?
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        authStatus = manager.authorizationStatus
+    }
+
+    func start() {
+        if authStatus == .notDetermined { manager.requestWhenInUseAuthorization() }
+        manager.startUpdatingLocation()
+        API.shared.bearer = Keychain.get("auth0")
+        API.shared.demoAccount = UserDefaults.standard.string(forKey: "demoAccount")
+        Task {
+            if API.shared.bearer != nil || API.shared.demoAccount != nil { await loadAccount() }
+            restoring = false
+            await refresh()
+        }
+    }
+
+    // MARK: sign-in
+
+    @MainActor
+    func loadAccount() async {
+        do {
+            account = try await API.shared.me()
+        } catch {
+            signOut()  // expired or revoked token: back to the sign-in screen
+            loadError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func signIn(demo id: String) async {
+        activeRequest = nil
+        API.shared.bearer = nil
+        API.shared.demoAccount = id
+        UserDefaults.standard.set(id, forKey: "demoAccount")
+        await loadAccount()
+    }
+
+    @MainActor
+    func signIn(token: String) async {
+        activeRequest = nil
+        API.shared.demoAccount = nil
+        API.shared.bearer = token
+        Keychain.set(token, "auth0")
+        await loadAccount()
+    }
+
+    func signOut() {
+        account = nil
+        activeRequest = nil
+        API.shared.bearer = nil
+        API.shared.demoAccount = nil
+        Keychain.set(nil, "auth0")
+        UserDefaults.standard.removeObject(forKey: "demoAccount")
+        ResponderData.shared.reset()
+    }
+
+    @MainActor
+    func refresh() async {
+        loading = true
+        defer { loading = false }
+        do {
+            if config == nil { config = try await API.shared.config() }
+            async let l = API.shared.live(replay: replay, hour: replayHour, spanish: spanish)
+            async let s = API.shared.sites(replay: replay, hour: replayHour)
+            let (lv, st) = try await (l, s)
+            live = lv
+            sites = st.sites
+            sitesMode = st.mode
+            loadError = nil
+            updateGeofences()
+        } catch {
+            loadError = error.localizedDescription
+        }
+    }
+
+    /// Sites for the current season/hazard, open ones first, nearest first.
+    var relevantSites: [Site] {
+        sites.filter { sitesMode == "warming" ? ($0.warming ?? false) : ($0.cooling ?? false) }
+            .sorted { ($0.openNow ? 0 : 1, distance(to: $0)) < ($1.openNow ? 0 : 1, distance(to: $1)) }
+    }
+
+    func distance(to s: Site) -> CLLocationDistance { origin.distance(from: s.location) }
+
+    // MARK: voice (ElevenLabs via the server)
+
+    @MainActor
+    func speak(_ text: String) async {
+        do {
+            let data = try await API.shared.speak(text)
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+            player = try AVAudioPlayer(data: data)
+            player?.play()
+        } catch {
+            loadError = "Couldn't play audio: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: location + crowd counting
+
+    func locationManagerDidChangeAuthorization(_ m: CLLocationManager) {
+        authStatus = m.authorizationStatus
+        if authStatus == .authorizedWhenInUse || authStatus == .authorizedAlways { m.startUpdatingLocation() }
+        updateGeofences()
+    }
+
+    func locationManager(_ m: CLLocationManager, didUpdateLocations locs: [CLLocation]) {
+        let first = here == nil
+        here = locs.last
+        if first { updateGeofences() }
+    }
+
+    func locationManager(_ m: CLLocationManager, didFailWithError error: Error) {}
+
+    /// A random code for today only, so the server can count distinct phones without knowing which phone.
+    var dailyToken: String {
+        let day = Date().formatted(.iso8601.year().month().day())
+        if UserDefaults.standard.string(forKey: "tokenDay") != day {
+            UserDefaults.standard.set(day, forKey: "tokenDay")
+            UserDefaults.standard.set(UUID().uuidString, forKey: "token")
+        }
+        return UserDefaults.standard.string(forKey: "token")!
+    }
+
+    /// iOS watches at most 20 regions: the 20 nearest open sites, 60 m around each.
+    func updateGeofences() {
+        for r in manager.monitoredRegions { manager.stopMonitoring(for: r) }
+        guard crowdCounting else { return }
+        if manager.authorizationStatus != .authorizedAlways {
+            manager.requestAlwaysAuthorization()
+            return
+        }
+        for s in relevantSites.filter(\.openNow).prefix(20) {
+            let r = CLCircularRegion(center: s.coordinate, radius: 60, identifier: s.id)
+            r.notifyOnEntry = true
+            r.notifyOnExit = true
+            manager.startMonitoring(for: r)
+        }
+    }
+
+    func locationManager(_ m: CLLocationManager, didEnterRegion region: CLRegion) { send(region.identifier, "enter") }
+    func locationManager(_ m: CLLocationManager, didExitRegion region: CLRegion) { send(region.identifier, "exit") }
+
+    private func send(_ site: String, _ event: String) {
+        guard crowdCounting else { return }
+        let token = dailyToken
+        Task { try? await API.shared.presence(site: site, event: event, token: token) }
+    }
+}

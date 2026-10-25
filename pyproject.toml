@@ -3,7 +3,10 @@ name = "swelter"
 version = "0.1.0"
 description = "Disaster what-if simulator for Philadelphia (HackPSU 2026)"
 requires-python = ">=3.11,<3.14"
-dependencies = ["anthropic>=1.0"]
+dependencies = ["anthropic>=1.0", "pyjwt[crypto]>=2.8"]
+
+[project.optional-dependencies]
+tiger = ["psycopg[binary]>=3.2"]  # Tiger Data / Timescale Cloud via DATABASE_URL
 
 [tool.uv]
 package = false

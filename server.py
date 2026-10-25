@@ -1,4 +1,4 @@
-"""Swelter demo server: static app + the one live endpoint (/api/why).
+"""Swelter server: the web demo (static app + /api/why) and the iPhone app's API (backend/api.py).
 
     uv run server.py            # http://localhost:8000
 
@@ -11,12 +11,16 @@ import os
 import pathlib
 from functools import lru_cache
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qsl, urlsplit
+
+from backend import api
 
 ROOT = pathlib.Path(__file__).resolve().parent
 APP = ROOT / "app"
 DATA = APP / "data"
 MODEL = os.environ.get("SWELTER_MODEL", "claude-opus-5-5")
 PORT = int(os.environ.get("PORT", "8000"))
+HOST = os.environ.get("HOST", "127.0.0.1")  # 0.0.0.0 in Docker / on Vultr
 LEVEL_NAMES = ["safe", "caution", "danger", "extreme danger"]
 
 
@@ -137,22 +141,47 @@ class Handler(SimpleHTTPRequestHandler):
         if "/api/" in (args[0] if args else ""):
             super().log_message(fmt, *args)
 
-    def _json(self, code, obj):
-        body = json.dumps(obj).encode()
+    def _json(self, code, obj, ctype="application/json"):
+        body = obj if isinstance(obj, bytes) else json.dumps(obj).encode()
         self.send_response(code)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
+    def _api(self, method):
+        url = urlsplit(self.path)
+        try:
+            body = {}
+            if method in ("POST", "PUT"):
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            code, out = api.handle(method, url.path, dict(parse_qsl(url.query)), self.headers, body)
+        except api.HTTPError as e:
+            code, out = e.code, {"error": str(e)}
+        except (KeyError, ValueError, TypeError, json.JSONDecodeError) as e:
+            code, out = 400, {"error": f"bad request: {e!r}"}
+        except OSError as e:  # NWS / ArcGIS / sponsor API unreachable
+            code, out = 502, {"error": f"upstream unavailable: {e}"}
+        except Exception as e:  # never drop the connection; the app shows this message
+            print("API error:", repr(e))
+            code, out = 500, {"error": f"server error: {e}"}
+        if isinstance(out, tuple):
+            return self._json(code, *out)
+        return self._json(code, out)
+
     def do_GET(self):
         if self.path == "/api/status":
             return self._json(200, {"llm": has_key(), "model": MODEL if has_key() else None})
+        if self.path.startswith("/api/"):
+            return self._api("GET")
         return super().do_GET()
+
+    def do_PUT(self):
+        return self._api("PUT")
 
     def do_POST(self):
         if self.path != "/api/why":
-            return self._json(404, {"error": "not found"})
+            return self._api("POST")
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
             f = facts(str(body["scenario"]), int(body["resident"]))
@@ -170,5 +199,5 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"Swelter on http://localhost:{PORT}  (live LLM explainer: {'on, ' + MODEL if has_key() else 'off — set ANTHROPIC_API_KEY'})")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    print(f"Swelter on http://{HOST}:{PORT}  (live LLM explainer: {'on, ' + MODEL if has_key() else 'off — set ANTHROPIC_API_KEY'})")
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

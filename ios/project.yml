@@ -1,0 +1,36 @@
+# xcodegen generate  →  Swelter.xcodeproj
+name: Swelter
+options:
+  bundleIdPrefix: app.swelter
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Swelter:
+    type: application
+    platform: iOS
+    sources: [Swelter]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.swelter.Swelter
+        TARGETED_DEVICE_FAMILY: "1"
+        # Where the app finds the server. The simulator reaches the Mac at 127.0.0.1; on a phone use the Vultr URL.
+        SWELTER_API_BASE: http://127.0.0.1:8000
+    info:
+      path: Swelter/Info.plist
+      properties:
+        CFBundleDisplayName: Swelter
+        SwelterAPIBase: $(SWELTER_API_BASE)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSLocationWhenInUseUsageDescription: Swelter uses your location to show the nearest open cooling and warming sites, and to tell a volunteer where you are when you ask for help.
+        NSLocationAlwaysAndWhenInUseUsageDescription: If you turn on crowd counting, Swelter notes when your phone enters or leaves a city cooling or warming site, so everyone can see which ones have room. Nothing else about your location is sent.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        CFBundleURLTypes:
+          - CFBundleURLName: auth0
+            CFBundleURLSchemes: [app.swelter.Swelter]
