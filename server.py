@@ -137,7 +137,9 @@ def has_key():
 
 # Gemini writes the resident summary when GEMINI_API_KEY is set (same key as Ask); Claude is the fallback, then the
 # offline text. A slow answer must not stall the inspector: past WHY_TIMEOUT seconds the offline text is returned.
-WHY_MODELS = [os.environ.get("GEMINI_WHY_MODEL", "gemini-3.5-flash-lite"), "gemini-3.5-flash"]
+# Benchmarked Oct 25 (tools/why_latency.py, 12 residents): flash-lite p50 1.25 s / p95 2.9 s; flash p50 9.2 s / p95 24 s
+# with 503s under load, so flash is not used here. One retry covers flash-lite's occasional 403/503.
+WHY_MODELS = [os.environ.get("GEMINI_WHY_MODEL", "gemini-3.5-flash-lite")]
 WHY_TIMEOUT = float(os.environ.get("SWELTER_WHY_TIMEOUT", "8"))
 _why_pool = ThreadPoolExecutor(max_workers=4)
 _why_cache = {}
@@ -153,7 +155,7 @@ def gemini_explanation(f):
 def explain(f):
     """→ (text, source, ms). Tries Gemini, then Claude, each under WHY_TIMEOUT; offline text if neither answers."""
     t0 = time.perf_counter()
-    tries = ([gemini_explanation] if ask.enabled() else []) + ([lambda f: (llm_explanation(f), MODEL)] if has_key() else [])
+    tries = ([gemini_explanation] * 2 if ask.enabled() else []) + ([lambda f: (llm_explanation(f), MODEL)] if has_key() else [])
     for fn in tries:
         left = WHY_TIMEOUT - (time.perf_counter() - t0)
         if left <= 0:
