@@ -28,8 +28,9 @@
     hazard: "heat", level: "severe", iv: "none",
     // speed is clock hours per real second: 1× = 15 min/s, so a 20-minute trip takes 1.3 s on screen
     t: 6, playing: true, speed: 0.25, selected: null, group: null, siteBudget: 3,
+    filter: { role: "", age: "", traits: new Set() },
   };
-  let modelData, updateVersion = 0;
+  let modelData, updateVersion = 0, match = null, filterVersion = 0;
   let M, roads = [], water = [], deckOverlay, map, run, baseRun, frame = 0, lastTs = 0;
   const runCache = new Map();
   const jitter = [];
@@ -88,7 +89,9 @@
   }
   function renderControls() {
     const hz = M.hazards[state.hazard];
-    document.documentElement.style.setProperty("--hz", HAZARD_COLOR[state.hazard]);
+    // The whole app takes the hazard's theme (warm for heat, cool for cold): surfaces, accent, Ask panel, browser bar.
+    document.documentElement.dataset.hazard = state.hazard;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", css("--bg"));
     seg($("#hazard-seg"), Object.entries(M.hazards).map(([k, v]) => [k, v.label]), state.hazard, (k) => {
       state.hazard = k; state.group = null; if (!M.hazards[k].interventions[state.iv]) state.iv = "none"; update();
     });
@@ -126,7 +129,7 @@
     const r = await loadRun(sid("none"));
     if (version !== updateVersion) return;
     run = r; baseRun = r;
-    renderBadge(); renderSpark(); renderCompare();
+    renderBadge(); renderSpark(); renderCompare(); renderFilter();
     document.dispatchEvent(new CustomEvent("swelter:scenario", { detail: { hazard: state.hazard, level: state.level, iv: state.iv } }));
     if (state.selected !== null) renderInspector();
     redraw();
@@ -256,13 +259,13 @@
         getRadius: (_, { index }) => (index === sel ? 70 : levelAt(index, t) ? 40 : 28), radiusMinPixels: 2.6, radiusMaxPixels: 10,
         getFillColor: (_, { index }) => {
           const l = levelAt(index, t), c = LEVEL_RGB[l];
-          const dim = grp && !M.residents[index].groups.includes(grp);
+          const dim = (grp && !M.residents[index].groups.includes(grp)) || (match && !match[index]);
           const a = dim ? 20 : l === 0 ? 110 : 255;
           return [c[0], c[1], c[2], a];
         },
         stroked: true, lineWidthMinPixels: 1,
         getLineColor: (_, { index }) => (index === sel ? [255, 255, 255, 255] : [0, 0, 0, 0]),
-        updateTriggers: { getPosition: frame, getFillColor: [frame, grp], getRadius: [sel, frame], getLineColor: sel },
+        updateTriggers: { getPosition: frame, getFillColor: [frame, grp, filterVersion], getRadius: [sel, frame], getLineColor: sel },
         onClick: (info) => { state.selected = info.index; renderInspector(); redraw(); },
         onHover: (info) => showTip(info),
       }),
@@ -309,10 +312,50 @@
     $("#readout").textContent = READOUT[state.hazard](intensityAt(state.t));
     const h = Math.min(Math.floor(state.t - 6), 16), counts = [0,0,0,0];
     for(let i=0;i<M.residents.length;i++) counts[run.lvl[i*M.hours.length+h]]++;
+    if (match && h !== updateHud.h) updateFilterSummary();
+    updateHud.h = h;
     $("#legend").innerHTML = counts.map((c, l) => LEVEL_NAME[l] ? `<span><i style="background:rgb(${LEVEL_RGB[l]})"></i>${LEVEL_NAME[l]} <b>${c}</b></span>` : "").join("");
     if (state.selected !== null) {
       document.querySelectorAll(".timeline .cell").forEach((el) => el.classList.toggle("now", +el.dataset.h === h));
     }
+  }
+
+  // ---------- resident filter (occupation, age, traits) ----------
+  const TRAITS = {
+    no_car: ["No car", (r) => !r.car], no_ac: ["No AC", (r) => !r.ac], no_heat: ["No reliable heat", (r) => !r.heat],
+    alone: ["Lives alone", (r) => r.alone], poverty: ["Low income", (r) => r.poverty], respiratory: ["Asthma / COPD", (r) => r.respiratory],
+  };
+  function renderFilter() {
+    const f = state.filter, ages = [...new Set(M.residents.map((r) => r.age))].sort();
+    const traits = Object.entries(TRAITS).filter(([k]) => !(state.hazard === "heat" && k === "no_heat") && !(state.hazard === "cold" && k === "no_ac"));
+    for (const k of [...f.traits]) if (!traits.some(([t]) => t === k)) f.traits.delete(k);
+    $("#filter-role").innerHTML = `<option value="">All occupations</option>` + Object.entries(ROLE).map(([k, v]) => `<option value="${k}"${f.role === k ? " selected" : ""}>${v[0].toUpperCase() + v.slice(1)}</option>`).join("");
+    $("#filter-age").innerHTML = `<option value="">All ages</option>` + ages.map((a) => `<option${f.age === a ? " selected" : ""}>${a}</option>`).join("");
+    $("#filter-traits").innerHTML = traits.map(([k, [label]]) => `<button type="button" data-t="${k}" aria-pressed="${f.traits.has(k)}" class="${f.traits.has(k) ? "on" : ""}">${label}</button>`).join("");
+    document.querySelectorAll("#filter-traits button").forEach((b) => (b.onclick = () => { f.traits.has(b.dataset.t) ? f.traits.delete(b.dataset.t) : f.traits.add(b.dataset.t); applyFilter(); }));
+    applyFilter(true);
+  }
+  function applyFilter(quiet) {
+    const f = state.filter, on = f.role || f.age || f.traits.size;
+    document.querySelectorAll("#filter-traits button").forEach((b) => { const v = f.traits.has(b.dataset.t); b.classList.toggle("on", v); b.setAttribute("aria-pressed", v); });
+    if (!on) match = null;
+    else {
+      const tests = [...f.traits].map((k) => TRAITS[k][1]);
+      match = Uint8Array.from(M.residents, (r) => (!f.role || r.role === f.role) && (!f.age || r.age === f.age) && tests.every((t) => t(r)));
+    }
+    filterVersion++;
+    $("#filter-clear").hidden = !on;
+    updateFilterSummary();
+    if (!quiet) redraw();
+  }
+  function updateFilterSummary() {
+    const out = $("#filter-summary");
+    if (!match) { out.textContent = `Showing all ${M.residents.length.toLocaleString()} residents. Narrow by occupation, age or circumstance.`; return; }
+    const s = planningSummary(), h = Math.min(Math.floor(state.t - 6), 16);
+    let n = 0, risk = 0, now = 0;
+    for (let i = 0; i < match.length; i++) if (match[i]) { n++; risk += s.people[i].risk; if (run.lvl[i * M.hours.length + h]) now++; }
+    out.innerHTML = n ? `<b>${n.toLocaleString()}</b> residents match · <b>${(risk / n).toFixed(1)} h</b> predicted danger each · <b>${now.toLocaleString()}</b> at elevated risk now`
+      : "No residents match these filters.";
   }
 
   // ---------- inspector ----------
@@ -378,7 +421,9 @@
       if (!res.ok) throw Error(res.status);
       const j = await res.json();
       if (state.selected !== i) return;
-      out.innerHTML = `<p></p><div class="why-src">${j.source === "offline" ? "Offline explanation from the planner's reason codes" : "Explained live by " + j.source} · grounded only in this resident's stored day</div>`;
+      const who = j.source === "offline" ? "Offline summary from the planner's reason codes"
+        : `${j.source.startsWith("gemini") ? "Gemini" : "Claude"} (${j.source})${j.cached ? ", cached" : ` in ${(j.ms / 1000).toFixed(1)} s`}`;
+      out.innerHTML = `<p></p><div class="why-src">${who} · uses only this resident's stored day and its rule-based exposure levels</div>`;
       out.querySelector("p").textContent = j.text;
       btn.textContent = "Ask again";
     } catch (e) {
@@ -434,6 +479,9 @@
     $("#play").classList.toggle("playing", state.playing);
     $("#play").setAttribute("aria-label", state.playing ? "Pause" : "Play");
     $("#speed").onchange = (e) => { state.speed = +e.target.value; };
+    $("#filter-role").onchange = (e) => { state.filter.role = e.target.value; applyFilter(); };
+    $("#filter-age").onchange = (e) => { state.filter.age = e.target.value; applyFilter(); };
+    $("#filter-clear").onclick = () => { state.filter = { role: "", age: "", traits: new Set() }; renderFilter(); redraw(); };
     window.swelter = { state, select: (i) => { state.selected = i; renderInspector(); redraw(); },
       get run() { return run; }, get models() { return modelData; }, get meta() { return M; }, summary: planningSummary,
       setResponse: (iv)=>{if(iv==='none'||iv==='refuge'){state.iv=iv;update();}}, setBudget: (n)=>{if([1,3,5].includes(n)){state.siteBudget=n;update();}}, residentPos, refreshMap: redraw,

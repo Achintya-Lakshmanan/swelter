@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="vendor/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
   <a class="skip" href="#panel">Skip to results</a>
@@ -55,6 +55,7 @@
         </div>
         <button class="ghost peak" id="peak">Peak</button>
         <select id="speed" class="speed" aria-label="Playback speed">
+          <option value="0.0625">0.25×</option>
           <option value="0.125">0.5×</option>
           <option value="0.25" selected>1×</option>
           <option value="0.5">2×</option>
@@ -68,6 +69,15 @@
     </section>
 
     <aside class="panel" id="panel" tabindex="-1">
+      <section class="filter" aria-labelledby="filter-h">
+        <div class="filter-head"><h2 id="filter-h">Find residents</h2><button type="button" class="link" id="filter-clear" hidden>Clear</button></div>
+        <div class="filter-selects">
+          <label><span class="visually-hidden">Occupation</span><select id="filter-role"></select></label>
+          <label><span class="visually-hidden">Age</span><select id="filter-age"></select></label>
+        </div>
+        <div class="filter-traits" id="filter-traits" role="group" aria-label="Circumstances"></div>
+        <p class="filter-summary" id="filter-summary" aria-live="polite"></p>
+      </section>
       <div id="exposure-panel">
         <div class="panel-head">
           <div class="eyebrow" id="history-eyebrow" hidden>Compare</div>
@@ -87,9 +97,9 @@
   <script src="vendor/maplibre-gl.js"></script>
   <script src="vendor/deckgl.min.js"></script>
   <script src="auth.js?v=2"></script>
-  <script src="main.js?v=22"></script>
+  <script src="main.js?v=24"></script>
   <script src="shelters.js?v=4"></script>
   <script src="hud.js?v=3"></script>
-  <script src="ask.js?v=2"></script>
+  <script src="ask.js?v=3"></script>
 </body>
 </html>

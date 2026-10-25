@@ -12,6 +12,25 @@
   --r: 6px;
 }
 :root[data-hazard="cold"] { --hz: var(--cold); }
+/* The app's theme follows the hazard: warm blacks and crimson for heat, blue-blacks and ice-blue for cold.
+   Everything (bar, panel, timebar, inspector, Ask, sign-in) reads these tokens. */
+:root[data-hazard="heat"] { --bg: #0d0a08; --s1: #17110d; --s2: #211812; --s3: #2e221a; --ink: #f3ece6; --muted: #b3a69c; --subtle: #95887e; --accent: #e0243a; --accent-ink: #fff; }
+:root[data-hazard="cold"] { --bg: #070b10; --s1: #0d141c; --s2: #142029; --s3: #1e2d3b; --ink: #e8f0f7; --muted: #9db0c2; --subtle: #8195a8; --accent: #2f8fff; --accent-ink: #fff; }
+body, .topbar, .panel, .timebar, .inspector, .ask, .seg, select, .bar-row, .shelter-list li { transition: background-color .4s ease, color .4s ease; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* resident filter */
+.filter { margin-bottom: 28px; }
+.filter-head { display: flex; justify-content: space-between; align-items: baseline; }
+.filter h2 { margin: 0 0 12px; }
+.filter-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.filter-selects select { width: 100%; }
+.filter-traits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.filter-traits button { border: 0; background: var(--s1); color: var(--muted); padding: 6px 10px; border-radius: 99px; cursor: pointer; font-size: 13px; min-height: 32px; }
+.filter-traits button:hover { color: var(--ink); background: var(--s2); }
+.filter-traits button.on { background: var(--hz); color: var(--bg); }
+.filter-summary { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+.filter-summary b { color: var(--ink); font-weight: 600; }
 * { box-sizing: border-box; }
 html { color-scheme: dark; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
@@ -273,3 +292,4 @@ summary { cursor: pointer; color: var(--ink); }
 }
 .ask-send { background: var(--accent); color: var(--bg); border: 0; border-radius: 3px; padding: 0 16px; font-weight: 600; cursor: pointer; }
 .ask-a p{white-space:pre-line}
+.ask-send { color: var(--accent-ink); }
