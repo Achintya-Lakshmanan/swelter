@@ -11,15 +11,21 @@ SWELTER_DEV_LOGIN=1 uv run server.py              # API + web demo on http://127
 cd ios && xcodegen generate && open Swelter.xcodeproj   # run the Swelter scheme on any iPhone simulator
 ```
 
-The simulator reaches the Mac at 127.0.0.1. For a real phone, set `SWELTER_API_BASE` in `ios/project.yml` to the
-deployed URL and regenerate. Put a simulator in North Philadelphia with
-`xcrun simctl location booted set 39.9937,-75.1330`.
+The simulator reaches the Mac at 127.0.0.1. For a real phone, run the server with `HOST=0.0.0.0` and build with
+`SWELTER_API_BASE=http://<laptop LAN IP>:8000` (or the deployed URL). Put a simulator in North Philadelphia with
+`xcrun simctl location booted set 39.9937,-75.1330`; put a connected phone there with
+`xcrun devicectl device simulate location start --device <id> --latitude 39.995527 --longitude=-75.148007`
+(Kayla's block; `... simulate location clear --device <id>` undoes it).
 
 `SWELTER_DEV_LOGIN=1` adds two demo accounts to the sign-in screen, for a demo with no Auth0 tenant (or as a
 backup if the venue Wi-Fi blocks Auth0). Never set it in production.
 
-Off-season demo: Settings › Replay a record day replays a real recorded day (heat, smoke, flood or cold) at a
-chosen hour. A dark banner on every screen says it's a replay.
+Off-season demo: Settings › Replay a record day replays a real recorded day (heat, smoke, flood or cold) on the
+phone's real clock. The date is the record day's month and day in the current year (Jul 22, 2026 for the record
+heat day), so the city's posted site hours apply for that weekday. A dark banner on every screen shows the simulated
+date and the real time. Conditions are that day's recorded reading at the current hour, for all 24 hours
+(`app/data/replay_hours.json`). The simulation itself covers 6 AM to 10 PM: outside that, crowd forecasts say "No
+forecast this hour" and the responder risk layer is empty with a note, instead of showing another hour's numbers.
 
 ## Sign-in and accounts
 
@@ -41,7 +47,8 @@ chosen hour. A dark banner on every screen says it's a replay.
 
 Setup: the server runs on a reachable host (Vultr, or the laptop's LAN IP set as `SWELTER_API_BASE`) with
 `SWELTER_DEV_LOGIN=1`. The phone is Kayla; the iOS Simulator on the laptop is Marisol (put it in North Philly with
-`xcrun simctl location booted set 39.9812,-75.1554`). On both, Settings › Replay a record day › Heat: Record, 3 PM.
+`xcrun simctl location booted set 39.9812,-75.1554`). On both, Settings › Replay a record day › Heat: Record. The
+app follows the real clock, so the risk layer and crowd forecasts show between 6 AM and 10 PM.
 
 1. **Web simulator, record heat day.** Open `/?hazard=heat&level=extreme&resident=1484&hour=15`: Jul 22, 2011,
    119 °F heat index, with Kayla's card open (75+, Fairhill, lives alone, no AC, missed the warning, 17 dangerous
@@ -72,7 +79,7 @@ Reset between runs: stop the server, delete `data/swelter.db`, start it again.
 | Crowd level, 3rd choice | Swelter simulation of the closest real day on record, relative to the site's own busiest hour ("Quiet / Busy / Peak hour"), labelled simulated | simulation |
 | Walk times, addresses | Apple Maps (MapKit ETA, reverse geocoding) | live |
 | Responder risk layer | Swelter simulation: simulated residents at danger level or worse per ~350 m cell, labelled synthetic | simulation |
-| Replay conditions | NOAA ISD hourly at PHL; EPA AQS PM2.5 NowCast for smoke | recorded |
+| Replay conditions | NOAA ISD hourly at PHL; EPA AQS PM2.5 NowCast for smoke; every hour of the record day (`scripts/replay_hours.py`) | recorded |
 | Help requests, claims, outcomes | What residents and responders do in the app; nothing is seeded | real people |
 
 ## Data we don't have (shown honestly or left out)

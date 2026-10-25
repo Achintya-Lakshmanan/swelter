@@ -111,6 +111,9 @@ struct HazardCard: View {
                     } else {
                         Text(live.replay ? (live.conditions.label ?? "Replay") : "No weather alerts for Philadelphia").font(.headline)
                         Text(conditionsLine(live)).font(.subheadline)
+                        if live.replay, let day = live.conditions.day {
+                            Text("Weather replayed from \(day), the record day at PHL").font(.caption).opacity(0.85)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -130,7 +133,8 @@ struct HazardCard: View {
 func conditionsLine(_ live: Live) -> String {
     let c = live.conditions
     if live.replay, let v = c.value, let u = c.unit {
-        return "\(Int(v.rounded())) \(u) at \(hourLabel(c.hour ?? 12)) on \(c.day ?? "")"
+        let now = Calendar.current.component(.hour, from: Date())
+        return "\(Int(v.rounded())) \(u) " + (c.hour == now ? "now" : "at \(hourLabel(c.hour ?? 12))")
     }
     var parts: [String] = []
     if let t = c.tempF { parts.append("\(t)°F at PHL") }
@@ -168,7 +172,7 @@ struct NearbyPanel: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(s.name).font(.headline).foregroundStyle(Color.ink).lineLimit(1)
                             Text("\(walk.label(s, model: model)) · \(s.hoursLine.lowerFirst)")
-                                .font(.subheadline).foregroundStyle(Color.muted)
+                                .font(.subheadline).foregroundStyle(Color.muted).multilineTextAlignment(.leading)
                         }
                         Spacer()
                         LevelPill(level: s.crowd.level, forecast: s.crowd.source == "swelter forecast")
@@ -197,6 +201,7 @@ struct AlertDetail: View {
                             Card {
                                 Text(live.conditions.label ?? "Replay").font(.headline)
                                 Text(conditionsLine(live))
+                                if let day = live.conditions.day { Text("Recorded on \(day); the app shows it on today's clock.").foregroundStyle(Color.muted) }
                                 if let n = live.conditions.note { Text(n.prefix(1).uppercased() + n.dropFirst()).foregroundStyle(Color.muted) }
                                 SourceLine(text: live.conditions.source ?? "")
                             }

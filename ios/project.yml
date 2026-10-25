@@ -18,7 +18,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.swelter.Swelter
         TARGETED_DEVICE_FAMILY: "1"
-        # Where the app finds the server. The simulator reaches the Mac at 127.0.0.1; on a phone use the Vultr URL.
+        # Where the app finds the server. The simulator reaches the Mac at 127.0.0.1; a phone needs the Mac's LAN IP
+        # (pass SWELTER_API_BASE=http://<ip>:8000 to xcodebuild, run the server with HOST=0.0.0.0) or the Vultr URL.
         SWELTER_API_BASE: http://127.0.0.1:8000
     info:
       path: Swelter/Info.plist
@@ -26,9 +27,12 @@ targets:
         CFBundleDisplayName: Swelter
         SwelterAPIBase: $(SWELTER_API_BASE)
         UILaunchScreen: {}
+        # The palette in Theme.swift is light-only; without this, dark-mode phones get white text on white cards.
+        UIUserInterfaceStyle: Light
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSLocationWhenInUseUsageDescription: Swelter uses your location to show the nearest open cooling and warming sites, and to tell a volunteer where you are when you ask for help.
         NSLocationAlwaysAndWhenInUseUsageDescription: If you turn on crowd counting, Swelter notes when your phone enters or leaves a city cooling or warming site, so everyone can see which ones have room. Nothing else about your location is sent.
+        NSLocalNetworkUsageDescription: Swelter connects to its server on this network during development.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         CFBundleURLTypes:

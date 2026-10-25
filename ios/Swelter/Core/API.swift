@@ -20,7 +20,7 @@ struct Conditions: Decodable {
     var humidity: Int?; var summary: String?; var aqi: Int?; var aqiSource: String?
     // replay of a recorded day
     var label: String?; var day: String?; var value: Double?; var unit: String?; var hour: Int?; var note: String?
-    var source: String?
+    var source: String?; var simulated: Bool?
 }
 
 struct NWSAlert: Decodable, Identifiable {
@@ -35,6 +35,7 @@ struct Hourly: Decodable { let time: String; let tempF: Int; let short: String }
 struct MatchedDay: Decodable { let scenario: String; let day: String; let peak: Double; let unit: String; let source: String }
 
 struct Live: Decodable {
+    struct Simulated: Decodable { let date: String; let label: String }
     let mode: String
     let hazard: String?
     let replay: Bool
@@ -43,6 +44,8 @@ struct Live: Decodable {
     let alerts: [NWSAlert]
     let forecast: [Hourly]
     var note: String?
+    /// During a replay: the date the demo pretends it is (the record day, this year).
+    var simulated: Simulated?
 }
 
 struct Crowd: Decodable {
@@ -58,6 +61,11 @@ struct Crowd: Decodable {
         case "swelter forecast": "Swelter forecast (simulated, \(realDay ?? "a real day"))"
         default: "No reports yet"
         }
+    }
+
+    /// The simulation covers 6 AM-10 PM; overnight a forecast site has no level rather than another hour's.
+    var levelText: String {
+        level == nil && source == "swelter forecast" ? "No forecast this hour" : LevelStyle.of(level).label
     }
 }
 
@@ -117,7 +125,7 @@ struct Me: Decodable {
 
 struct RiskGrid: Decodable {
     struct Cell: Decodable { let lat: Double; let lon: Double; let danger: Int; let people: Int }
-    let scenario: String?; let hour: Int?; let step: Double?; let cells: [Cell]; let unit: String?; let realDay: String?
+    let scenario: String?; let hour: Int?; let simulated: Bool?; let step: Double?; let cells: [Cell]; let unit: String?; let realDay: String?
     let note: String
 }
 

@@ -25,7 +25,9 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
     var spanish = UserDefaults.standard.bool(forKey: "spanish") { didSet { UserDefaults.standard.set(spanish, forKey: "spanish") } }
     /// Demo: replay one of the stored record days instead of today. Always labelled on screen.
     var replay: String? = UserDefaults.standard.string(forKey: "replay") { didSet { UserDefaults.standard.set(replay, forKey: "replay") } }
-    var replayHour = UserDefaults.standard.object(forKey: "replayHour") as? Int ?? 15 { didSet { UserDefaults.standard.set(replayHour, forKey: "replayHour") } }
+    /// A replay runs on the real clock: the record day's weather at the current hour.
+    var clockHour = Calendar.current.component(.hour, from: Date())
+    var replayHour: Int { clockHour }
     var crowdCounting = UserDefaults.standard.bool(forKey: "crowdCounting") {
         didSet { UserDefaults.standard.set(crowdCounting, forKey: "crowdCounting"); updateGeofences() }
     }
@@ -82,6 +84,20 @@ final class AppModel: NSObject, CLLocationManagerDelegate {
             if API.shared.bearer != nil || API.shared.demoAccount != nil { await loadAccount() }
             restoring = false
             await refresh()
+        }
+        Task { await followClock() }
+    }
+
+    /// When the hour turns, reload so conditions, open sites and crowd levels move with the clock.
+    @MainActor
+    private func followClock() async {
+        while true {
+            try? await Task.sleep(for: .seconds(30))
+            let h = Calendar.current.component(.hour, from: Date())
+            if h != clockHour {
+                clockHour = h
+                await refresh()
+            }
         }
     }
 

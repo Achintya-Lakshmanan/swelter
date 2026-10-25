@@ -34,6 +34,7 @@ struct LevelPill: View {
     var body: some View {
         let s = LevelStyle.of(level)
         let forecastLabel = ["quiet": "Quiet hour", "busy": "Busy hour", "full": "Peak hour"][level ?? ""]
+            ?? "No forecast this hour"  // the simulation covers 6 AM-10 PM
         Text(forecast ? (forecastLabel ?? s.label) : s.label)
             .font(.footnote.weight(.semibold))
             .padding(.horizontal, 10).padding(.vertical, 4)

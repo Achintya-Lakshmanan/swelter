@@ -51,13 +51,10 @@ struct SettingsScreen: View {
                             Text("\(k.split(separator: "_").first.map { String($0).capitalized } ?? k): \(v)").tag(Optional(k))
                         }
                     }
-                    if model.replay != nil {
-                        Stepper("Time: \(hourLabel(model.replayHour))", value: $model.replayHour, in: 6...22)
-                    }
                 } header: {
                     Text("Replay a record day")
                 } footer: {
-                    Text("Replays real recorded weather (NOAA, EPA) and Swelter's simulated crowds for that day. Site list and hours are today's.")
+                    Text("Replays a real recorded day's weather (NOAA, EPA) and Swelter's simulated crowds on today's clock, dated this year. Site hours are the city's current posted hours. The simulation covers 6 AM to 10 PM, so overnight there's no crowd forecast or risk layer.")
                 }
 
                 Section("Data") {
@@ -68,7 +65,6 @@ struct SettingsScreen: View {
             }
             .navigationTitle("Settings")
             .onChange(of: model.replay) { Task { await model.refresh() } }
-            .onChange(of: model.replayHour) { Task { await model.refresh() } }
             .onChange(of: model.spanish) { Task { await model.refresh() } }
         }
     }

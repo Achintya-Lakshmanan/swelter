@@ -21,7 +21,7 @@ Responders (role responder):
 """
 import hmac
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 from . import auth, forecast, live, store, translate, voice
 
@@ -53,8 +53,13 @@ def situation(q):
     if rep:
         hz, _, lvl = rep.partition("_")
         need(hz in forecast.meta()["hazards"] and lvl in forecast.meta()["hazards"][hz]["levels"], "unknown replay day")
-        hour = int(q.get("hour") or now().hour)
-        return {"replay": True, "hazard": hz, "scenario": rep, "hour": hour,
+        hour = min(max(int(q.get("hour") or now().hour), 0), 23)
+        # The replay is presented as this year's date of the record day (e.g. Jul 22, 2011 → Wed, Jul 22 this
+        # year), so site hours follow that weekday; the weather stays the recorded day's.
+        rec = date.fromisoformat(forecast.meta()["hazards"][hz]["levels"][lvl]["date"])
+        sim = date(now().year, rec.month, rec.day)
+        return {"replay": True, "hazard": hz, "scenario": rep, "hour": hour, "sim_date": sim,
+                "sim_now": datetime(sim.year, sim.month, sim.day, hour, now().minute, tzinfo=live.TZ),
                 "mode": "warming" if hz == "cold" else "cooling"}
     cond, al = live.conditions(), live.alerts()
     hz = next((a["hazard"] for a in al if a["hazard"]), None)
@@ -84,7 +89,9 @@ def get_live(q):
         out["matched_day"] = {"scenario": s["scenario"], "day": r["day"], "date": r["date"], "peak": r["peak"],
                               "unit": r["unit"], "source": r["source"]}
     if s["replay"]:
+        d = s["sim_date"]
         out |= {"conditions": forecast.replay_conditions(s["scenario"], s["hour"]), "alerts": [], "forecast": [],
+                "simulated": {"date": d.isoformat(), "label": f"{d:%a, %b} {d.day}, {d.year}"},
                 "note": "Replaying a real recorded day. Not today's weather."}
         return out
     out |= {"conditions": s["conditions"], "alerts": s["alerts"], "forecast": live.hourly_forecast()}
@@ -114,9 +121,11 @@ def crowd(site, reports, presence, sc, hour):
         return {"level": lvl, "source": "phones", "phones_inside": inside, "phones_4h": phones}
     f = forecast.site_forecast(sc, site["name"]) if sc else None
     if f:
-        h = max(0, min(len(f["hours"]) - 1, hour - f["hours"][0]))
-        rel = f["people"][h] / max(max(f["people"]), 1)
-        return {"level": "quiet" if rel < .4 else "busy" if rel < .75 else "full", "source": "swelter forecast",
+        lvl = None  # the simulation has no one at sites outside 6 AM-10 PM, so no level then
+        if hour in f["hours"]:
+            rel = f["people"][f["hours"].index(hour)] / max(max(f["people"]), 1)
+            lvl = "quiet" if rel < .4 else "busy" if rel < .75 else "full"
+        return {"level": lvl, "source": "swelter forecast",
                 "busiest_hour": f["hours"][f["people"].index(max(f["people"]))], "by_hour": f["people"],
                 "hours": f["hours"], "real_day": f["real_day"],
                 "note": "Simulated from a real day on record, relative to this site's own busiest hour."}
@@ -125,7 +134,7 @@ def crowd(site, reports, presence, sc, hour):
 
 def get_sites(q):
     s = situation(q)
-    sites = live.sites(None if not s["replay"] else now().replace(hour=min(max(s["hour"], 0), 23)))
+    sites = live.sites(s["sim_now"] if s["replay"] else None)
     reports, presence = store.latest_reports(), store.presence_counts()
     for x in sites:
         x["crowd"] = crowd(x, reports, presence, s["scenario"], s["hour"])
@@ -280,8 +289,9 @@ def responder(method, p, q, body, user, name):
         if not s["scenario"]:
             return 200, {"cells": [], "note": "No heat, smoke or cold hazard today, so there is no risk forecast."}
         hour = int(q.get("hour") or s["hour"])
-        return 200, forecast.risk_grid(s["scenario"], hour, q.get("iv", "refuge")) | {
-            "note": "Swelter simulation of the closest real day on record. Synthetic residents, not real people.",
-            "replay": s["replay"]}
+        g = forecast.risk_grid(s["scenario"], hour, q.get("iv", "refuge"))
+        note = ("Swelter simulation of the closest real day on record. Synthetic residents, not real people."
+                if g["simulated"] else "Swelter simulates 6 AM to 10 PM, so there is no risk layer at this hour.")
+        return 200, g | {"note": note, "replay": s["replay"]}
     raise HTTPError(404, "not found")
 

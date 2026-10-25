@@ -10,5 +10,6 @@ data/swelter.db*
 data/tts/
 .env
 ios/build/
+ios/build-device/
 ios/*.xcodeproj/
 ios/Swelter/Config.xcconfig

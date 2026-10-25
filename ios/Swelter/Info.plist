@@ -36,6 +36,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Swelter connects to its server on this network during development.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>If you turn on crowd counting, Swelter notes when your phone enters or leaves a city cooling or warming site, so everyone can see which ones have room. Nothing else about your location is sent.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
@@ -48,5 +50,7 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

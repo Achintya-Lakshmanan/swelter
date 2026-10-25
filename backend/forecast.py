@@ -71,7 +71,11 @@ def risk_grid(scenario, hour, iv="none"):
     """Grid cells (~350 m) with how many simulated residents are at danger or worse at this hour."""
     m = meta()
     rn = run(f"{scenario}_{iv}")
-    h = max(0, min(len(m["hours"]) - 1, hour - m["hours"][0]))
+    real_day = m["hazards"][rn["hazard"]]["levels"][rn["level"]]["label"].split(" — ")[-1]
+    if not simulated(hour):  # no simulated residents overnight; say so rather than show another hour
+        return {"scenario": f"{scenario}_{iv}", "hour": hour, "simulated": False, "step": m["grid"]["step"],
+                "cells": [], "unit": m["hazards"][rn["hazard"]]["unit"], "real_day": real_day}
+    h = hour - m["hours"][0]
     step, cells = m["grid"]["step"], {}
     for row, lv in zip(rn["steps"], rn["levels"]):
         p = m["places"][row[h] // 1000]
@@ -82,9 +86,21 @@ def risk_grid(scenario, hour, iv="none"):
             c[0] += 1
     out = [{"lat": (k[0] + .5) * step, "lon": (k[1] + .5) * step, "danger": d, "people": n}
            for k, (d, n) in cells.items() if d]
-    return {"scenario": f"{scenario}_{iv}", "hour": m["hours"][h], "step": step, "cells": out,
-            "intensity": rn["intensity"][h], "unit": m["hazards"][rn["hazard"]]["unit"],
-            "real_day": m["hazards"][rn["hazard"]]["levels"][rn["level"]]["label"].split(" — ")[-1]}
+    return {"scenario": f"{scenario}_{iv}", "hour": hour, "simulated": True, "step": step, "cells": out,
+            "intensity": rn["intensity"][h], "unit": m["hazards"][rn["hazard"]]["unit"], "real_day": real_day}
+
+
+@lru_cache(maxsize=1)
+def replay_hours():
+    """Every hour (0-23) of each record day as recorded (scripts/replay_hours.py); the simulation itself only
+    covers 6 AM-10 PM."""
+    f = DATA / "replay_hours.json"
+    return json.loads(f.read_text()) if f.exists() else {}
+
+
+def simulated(hour):
+    """Whether the simulation has this clock hour (6 AM-10 PM)."""
+    return hour in meta()["hours"]
 
 
 def replay_conditions(scenario, hour):
@@ -92,10 +108,15 @@ def replay_conditions(scenario, hour):
     m = meta()
     hz, lvl = scenario.split("_")
     L = m["hazards"][hz]["levels"][lvl]
-    h = max(0, min(len(m["hours"]) - 1, hour - m["hours"][0]))
+    full = replay_hours().get(hz, {}).get(lvl, {}).get("values")
+    if full:
+        value, at = full[hour], hour
+    else:  # older data without the full-day file: nearest simulated hour, labelled with that hour
+        h = max(0, min(len(m["hours"]) - 1, hour - m["hours"][0]))
+        value, at = L["intensity"][h], m["hours"][h]
     return {"hazard": hz, "label": m["hazards"][hz]["label"], "day": L["label"].split(" — ")[-1], "date": L.get("date"),
-            "note": L["note"], "value": L["intensity"][h], "unit": m["hazards"][hz]["unit"], "hour": m["hours"][h],
-            "peak": (min if hz == "cold" else max)(L["intensity"]),
+            "note": L["note"], "value": value, "unit": m["hazards"][hz]["unit"], "hour": at,
+            "simulated": simulated(hour), "peak": (min if hz == "cold" else max)(full or L["intensity"]),
             "source": "NOAA ISD hourly at PHL" if hz != "smoke" else "EPA AQS hourly PM2.5 (NowCast AQI)"}
 
 

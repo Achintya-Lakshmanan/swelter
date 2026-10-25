@@ -18,7 +18,7 @@ struct SiteDetail: View {
                     Text(site.address).foregroundStyle(Color.muted)
                 }
                 HStack {
-                    LevelPill(level: site.openNow ? site.crowd.level : nil, forecast: site.crowd.source == "swelter forecast")
+                    LevelPill(level: site.openNow ? site.crowd.level : nil, forecast: site.openNow && site.crowd.source == "swelter forecast")
                     Text(site.hoursLine).font(.subheadline.weight(.semibold))
                 }
                 CrowdCard(site: site)
@@ -83,6 +83,9 @@ struct CrowdCard: View {
                     .chartXAxis { AxisMarks(values: [9, 12, 15, 18, 21]) { v in AxisValueLabel { Text(hourLabel(v.as(Int.self) ?? 0)) } } }
                     .chartYAxis(.hidden)
                     .frame(height: 110)
+                    if !hours.contains(currentHour) {
+                        Text("Swelter simulates \(hourLabel(hours.first ?? 6)) to \(hourLabel(hours.last ?? 22)), so there's no forecast for \(hourLabel(currentHour)).")
+                    }
                     if let b = c.busiestHour { Text("Usually busiest around \(hourLabel(b)) on days like this.") }
                     SourceLine(text: "Swelter simulation of \(c.realDay ?? "a real day on record") with the city's sites open. Synthetic residents, not a head count.")
                 }
@@ -94,7 +97,7 @@ struct CrowdCard: View {
     }
 
     private var currentHour: Int {
-        model.replay != nil ? model.replayHour : Calendar.current.component(.hour, from: Date())
+        model.clockHour
     }
 }
 

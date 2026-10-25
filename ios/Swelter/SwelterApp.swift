@@ -65,10 +65,12 @@ struct ReplayBanner: View {
     @Environment(AppModel.self) private var model
     var body: some View {
         if let r = model.replay {
-            HStack(spacing: 6) {
-                Image(systemName: "clock.arrow.circlepath")
-                Text("Replay: \(model.config?.replayDays[r] ?? r) at \(hourLabel(model.replayHour)). Not today.")
-                    .lineLimit(1).minimumScaleFactor(0.8)
+            TimelineView(.everyMinute) { t in
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.arrow.circlepath")
+                    Text("Simulation · \(model.live?.simulated?.label ?? model.config?.replayDays[r] ?? r) · \(t.date.formatted(date: .omitted, time: .shortened))")
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
             }
             .font(.footnote.weight(.semibold))
             .padding(.horizontal, 12).padding(.vertical, 6)

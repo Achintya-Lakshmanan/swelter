@@ -99,7 +99,7 @@ struct RequestDetail: View {
                         Label(address ?? "Finding the address…", systemImage: "mappin.and.ellipse").font(.headline)
                         if let n = r.note { Text(n) }
                         if let cb = r.callback, !cb.isEmpty { Text("Callback: \(cb)") }
-                        if let s = nearestWithRoom { Text("Nearest with room: **\(s.name)** · \(LevelStyle.of(s.crowd.level).label.lowercased()) · \(s.hoursLine.lowerFirst)") }
+                        if let s = nearestWithRoom { Text("Nearest with room: **\(s.name)** · \(s.crowd.levelText.lowercased()) · \(s.hoursLine.lowerFirst)") }
                     }
                     PrimaryButton(title: "Navigate") { navigate() }
                     if let cb = r.callback, let url = URL(string: "tel:\(cb.filter(\.isNumber))") {

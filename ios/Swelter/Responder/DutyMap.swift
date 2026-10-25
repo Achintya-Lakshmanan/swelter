@@ -41,13 +41,11 @@ struct DutyMap: View {
                     ResponderHeader()
                         .padding(12).background(.white, in: RoundedRectangle(cornerRadius: 16))
                     ReplayBanner()
-                    HStack {
-                        Toggle(isOn: $showRisk) { Text(riskLabel) }.toggleStyle(.button)
-                        Toggle("Sites", isOn: $showSites).toggleStyle(.button)
+                    HStack(spacing: 8) {
+                        MapChip(title: riskLabel, icon: "flame.fill", on: $showRisk)
+                        MapChip(title: "Sites", icon: "building.columns.fill", on: $showSites)
                         Spacer()
                     }
-                    .font(.footnote.weight(.semibold))
-                    .buttonStyle(.bordered).tint(.ink)
                 }
                 .padding(.horizontal, 12).padding(.top, 4)
             }
@@ -62,7 +60,7 @@ struct DutyMap: View {
 
     private var riskLabel: String {
         guard let g = data.risk, let h = g.hour else { return "Swelter risk" }
-        return "Swelter risk · \(hourLabel(h))"
+        return g.simulated == false ? "Swelter risk · none at \(hourLabel(h))" : "Swelter risk · \(hourLabel(h))"
     }
 
     @ViewBuilder private var urgentCard: some View {
@@ -100,6 +98,27 @@ struct DutyMap: View {
 
     private func riskColor(_ n: Int) -> Color {
         n >= 8 ? Color(hex: 0xB3261E) : n >= 3 ? Color(hex: 0xC2410C) : Color(hex: 0xD08A00)
+    }
+}
+
+/// A layer switch that stays readable on any map: solid white when off, dark when on.
+struct MapChip: View {
+    let title: String
+    let icon: String
+    @Binding var on: Bool
+
+    var body: some View {
+        Button { on.toggle() } label: {
+            Label(title, systemImage: on ? icon : "eye.slash")
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(on ? Color.ink : .white, in: Capsule())
+                .foregroundStyle(on ? .white : Color.ink)
+                .overlay(Capsule().stroke(Color.ink.opacity(on ? 0 : 0.25), lineWidth: 1))
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 

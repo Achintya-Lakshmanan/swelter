@@ -34,6 +34,7 @@ python3 scripts/atus.py            # ATUS diaries -> hourly days                
 python3 scripts/derive_inputs.py   # real hazard days, RECS/PLACES rates, refuges  -> data/hazard_days.json, inputs.json, ...
 python3 scripts/validate.py        # fit behavior on 2020-21 mobility, test 2022   -> data/behavior_fit.json, app/data/validation.json
 python3 scripts/simulate.py        # 48 runs with the rule planner (~30s)          -> app/data/
+python3 scripts/replay_hours.py     # every hour of the 12 replay days (iPhone app)  -> app/data/replay_hours.json
 ```
 
 ATUS is downloaded by hand (BLS blocks scripted downloads): from https://www.bls.gov/tus/data.htm, save
