@@ -1,186 +1,21 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Swelter · Philadelphia's worst days, replayed</title>
-  <meta name="description" content="Swelter replays Philadelphia's real heat, smoke, flood and cold days hour by hour for 1,560 synthetic residents, so planners can see whose dangerous hours a city response takes away.">
-  <script>document.documentElement.classList.add("js");</script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Swelter · Heat and cold shelter planning</title>
+  <meta name="description" content="Compare standard-city access with ML-selected cooling and warming sites for synthetic Philadelphia residents.">
   <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="about.css?v=10">
+  <link rel="stylesheet" href="about.css?v=11">
 </head>
 <body>
-  <header class="nav">
-    <a class="mark" href="/">Swelter</a>
-    <nav aria-label="Page">
-      <a href="#records">Records</a>
-      <a href="#people">People</a>
-      <a href="#check">Validation</a>
-      <a href="/">Live map</a>
-    </nav>
-  </header>
-
-  <main>
-    <section class="hero" aria-labelledby="hero-title">
-      <h1 class="sentence" id="hero-title">
-        <span class="line"><span data-line style="--i:0">Philly's worst</span></span>
-        <span class="slot" data-open>
-          <video autoplay muted loop playsinline preload="auto" poster="img/heat-day-strip.jpg"
-            aria-label="Residents of North Philadelphia moving through the record heat day, dots turning red as exposure rises">
-            <source media="(max-width: 720px)" src="img/heat-day-wide.mp4" type="video/mp4">
-            <source src="img/heat-day-strip.mp4" type="video/mp4">
-          </video>
-        </span>
-        <span class="line"><span data-line style="--i:1">days, replayed.</span></span>
-      </h1>
-      <div class="hero-foot">
-        <p data-load style="--d:420ms">Swelter replays real heat waves, smoke days, floods and cold snaps hour by hour for
-          <span data-n="residents">1,560</span> synthetic Philadelphians, so a planner can see whose dangerous hours a
-          city response takes away.</p>
-        <a class="button" data-load style="--d:500ms" href="/?hazard=heat&amp;level=extreme">Open the live map</a>
-      </div>
-    </section>
-
-    <section class="records" id="records" aria-labelledby="records-title">
-      <div class="stack" aria-hidden="false">
-        <h2 id="records-title" data-reveal>Four hazards.</h2>
-        <p class="tone-mid" aria-hidden="true" data-reveal>Twelve real days.</p>
-        <p class="tone-low" aria-hidden="true" data-reveal>Hour by hour.</p>
-        <p class="tone-low" aria-hidden="true" data-reveal>None made up.</p>
-      </div>
-      <figure class="object shutter">
-        <img src="img/map-heat-record.jpg" width="1060" height="792" loading="lazy"
-          alt="The Swelter map at 3 PM on July 22, 2011: North Philadelphia shaded red for a 119°F heat index, residents as dots">
-      </figure>
-      <div class="facts" data-reveal>
-        <p>Each hazard has three levels, and each level is a day Philadelphia lived through: the median event since 2010,
-          the 95th-percentile day, and the worst on record. The hours come from NOAA's station at the airport and the
-          EPA's air monitors.</p>
-        <ul class="record-list" id="record-list">
-          <li><b>Heat</b> <span>Jul 22, 2011</span> <span>119°F heat index</span></li>
-          <li><b>Smoke</b> <span>Jun 7, 2023</span> <span>AQI 500</span></li>
-          <li><b>Flood</b> <span>Jul 28, 2013</span> <span>6.0 in of rain in 3 h</span></li>
-          <li><b>Cold</b> <span>Jan 7, 2014</span> <span>−18°F wind chill</span></li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="claim" id="people" aria-labelledby="noac-title">
-      <div class="claim-text" data-reveal>
-        <h2 id="noac-title">No AC, eleven hours of danger.</h2>
-        <p>On the record heat day, residents of homes without AC spent <b id="noac-base">11.1</b> hours in dangerous heat.
-          Opening the city's 31 real cooling sites cut that to <b id="noac-refuge">9.5</b>; free SEPTA rides to them, to
-          <b id="noac-transit">9.4</b>. Who has AC comes from the EIA's housing survey, by income.</p>
-      </div>
-      <figure class="claim-pic">
-        <img src="img/rowhouses-strawberry-mansion.jpg" width="1920" height="1440" loading="lazy"
-          alt="Brick rowhouses on North Napa Street in Strawberry Mansion, Philadelphia">
-        <figcaption>North Napa Street, Strawberry Mansion</figcaption>
-      </figure>
-    </section>
-
-    <section class="claim flip" aria-labelledby="why-title">
-      <div class="claim-text" data-reveal>
-        <h2 id="why-title">Click anyone. Ask why.</h2>
-        <p>Every dot is a person whose weekday is a real diary from the American Time Use Survey. Chen is unhoused and
-          sleeps near Kensington and Allegheny: 17 dangerous hours outside if the city does nothing, none once cooling
-          sites open. The why button asks a language model to explain the choice in plain words.</p>
-      </div>
-      <figure class="claim-pic tall">
-        <img src="img/inspector.jpg" width="380" height="669" loading="lazy"
-          alt="Resident card for Chen, 45 to 64, unhoused: 17 dangerous hours if the city does nothing, 0 with cooling sites open">
-      </figure>
-    </section>
-
-    <section class="claim" aria-labelledby="flood-title">
-      <div class="claim-text" data-reveal>
-        <h2 id="flood-title">Six inches in three hours.</h2>
-        <p>On July 28, 2013, the rain gauge at the airport caught 6.0 inches in three hours. People living inside FEMA
-          flood zones faced <b id="flood-base">4.8</b> dangerous hours; shelters outside the zone cut that to
-          <b id="flood-refuge">3.3</b>.</p>
-      </div>
-      <figure class="claim-pic">
-        <img src="img/schuylkill-trail-flooded.jpg" width="1023" height="680" loading="lazy"
-          alt="The Schuylkill River Trail underwater beside the swollen river in Center City Philadelphia">
-        <figcaption>Schuylkill River Trail, flooded</figcaption>
-      </figure>
-    </section>
-
-    <section class="ledger" aria-labelledby="ledger-title">
-      <h2 id="ledger-title" data-reveal><span>Hours of danger,</span> <span>taken away.</span></h2>
-      <ol class="rows" id="ledger">
-        <li><span class="whole"><span>7</span></span><span class="dec"><span>.9</span></span><span class="cap">hours fewer for unhoused residents on the record cold day, with outreach to 24-hour sites</span></li>
-        <li><span class="whole"><span>7</span></span><span class="dec"><span>.3</span></span><span class="cap">hours fewer for unhoused residents on the record smoke day, with an N95 giveaway</span></li>
-        <li><span class="whole"><span>7</span></span><span class="dec"><span>.2</span></span><span class="cap">hours fewer for outdoor workers on the record cold day, with an early Code Blue</span></li>
-        <li><span class="whole"><span>4</span></span><span class="dec"><span>.0</span></span><span class="cap">hours fewer for unhoused residents on the record heat day, with cooling sites open</span></li>
-        <li><span class="whole"><span>3</span></span><span class="dec"><span>.1</span></span><span class="cap">hours fewer for outdoor workers on the record heat day, with an early heat alert</span></li>
-      </ol>
-    </section>
-
-    <section class="claim" id="check" aria-labelledby="check-title">
-      <div class="claim-text" data-reveal>
-        <h2 id="check-title">Checked against real trips.</h2>
-        <p>How much people cancel, shift or stay home on a bad day is fitted to Google's mobility data for 2020 and 2021,
-          then tested on 2022, a year the fit never saw. The simulated change lands within <b id="mae">0.6</b> percentage
-          points of the real one on average, across six kinds of trips.</p>
-      </div>
-      <figure class="claim-pic">
-        <img src="img/validation.jpg" width="860" height="774" loading="lazy"
-          alt="Chart of simulated against real hot-day change in trips by category for 2022, with a mean absolute error of 0.6 points">
-      </figure>
-    </section>
-
-    <section class="proof" aria-label="Data sources">
-      <p class="names" id="names"><span class="lead-in">From public data only:</span>
-        <span>NOAA weather at PHL</span>, <span>EPA air monitors</span>, <span>satellite smoke plumes</span>,
-        <span>time-use diaries</span>, <span>Census ACS</span>, <span>the EIA housing survey</span>, <span>CDC PLACES</span>,
-        <span>FEMA flood zones</span>, <span>the city's cooling sites</span>, <span>OpenStreetMap</span> and
-        <span>Google mobility</span>.</p>
-    </section>
-
-    <section class="ask" aria-labelledby="ask-title">
-      <form class="ask-form" id="ask" action="/" method="get">
-        <h2 id="ask-title" class="ask-sentence">
-          <span>Put the record</span>
-          <label class="sr-only" for="ask-hazard">Hazard</label>
-          <select id="ask-hazard" name="hazard">
-            <option value="heat">heatwave</option>
-            <option value="smoke">smoke day</option>
-            <option value="flood">flash flood</option>
-            <option value="cold">cold snap</option>
-          </select>
-          <span class="br" aria-hidden="true"></span>
-          <span>on the</span>
-          <input type="hidden" name="level" value="extreme">
-          <button type="submit" aria-label="Open it on the map">map.</button>
-        </h2>
-        <p class="ask-note" id="ask-note" aria-live="polite">Opens the live map at July 22, 2011, peak heat index 119°F, with nothing done yet.</p>
-      </form>
-    </section>
+  <header class="nav"><a class="mark" href="/">Swelter</a><nav aria-label="Page"><a href="#models">Models</a><a href="#data">Data</a><a href="/">Live map</a></nav></header>
+  <main class="about-planning">
+    <section class="about-lead"><h1>Put shelter access<br>where the risk is.</h1><p>Explore heatwave and winter-storm exposure for synthetic Philadelphia residents. Compare Standard city with cooling or warming sites selected using trained-model predictions.</p><a class="button" href="/?hazard=heat&amp;iv=refuge">Explore cooling sites</a></section>
+    <section id="models"><h2>Two hazards. Two trained models.</h2><div class="about-columns"><article><h3>Heatwave</h3><p>Prioritize real cooling facilities near predicted exposure, especially residents without AC or a car.</p><p id="heat-quality">Loading model evaluation…</p><a href="/?hazard=heat&amp;iv=refuge">Open heatwave planning</a></article><article><h3>Winter storm</h3><p>Prioritize real warming facilities near residents who are unhoused or lack reliable heat.</p><p id="cold-quality">Loading model evaluation…</p><a href="/?hazard=cold&amp;iv=refuge">Open winter planning</a></article></div></section>
+    <section><h2>Compare access, hour by hour.</h2><p><b>Standard city</b> opens no model-selected sites. <b>Open cooling/warming sites</b> prioritizes 1, 3 or 5 facilities using predicted risk, proximity, vulnerability and posted opening hours.</p><p>The map marks selected sites. Metrics show predicted baseline risk-hours, risk-hours within site reach, risk-hours outside coverage and at-risk synthetic residents within reach. Resident movement shows baseline routines.</p><p>Reachable risk is not prevented exposure: attendance, route safety, current facility conditions and capacity are unverified.</p></section>
+    <section id="data"><h2>Real inputs. Synthetic residents.</h2><p>City cooling/warming site records and opening hours, NOAA weather and city heat maps provide the physical context. Census ACS, EIA RECS, CDC PLACES and ATUS inform residents and their routines.</p><p>Two random forests learn simulated dangerous-exposure labels. They are not trained on observed shelter or health outcomes. Each model uses 79,560 resident-hour examples across three historical weather days. Unhoused residents are oversampled and their schedules are assumed; counts are not Philadelphia population estimates.</p><p>The typical winter-day unseen-weather test did not beat a constant-risk baseline. The app discloses this limitation alongside the model's other held-out results.</p><a href="data/shelter_models.json" download>Download model report</a></section>
+    <section><h2>Explore a scenario</h2><form action="/" method="get" class="about-form"><label for="ask-hazard">Hazard</label><select id="ask-hazard" name="hazard"><option value="heat">Heatwave</option><option value="cold">Winter storm</option></select><input type="hidden" name="iv" value="refuge"><button class="button" type="submit">Open model-selected sites</button></form></section>
   </main>
-
-  <footer class="foot">
-    <div class="foot-top">
-      <p class="foot-invite">Built at HackPSU 2026.</p>
-      <ul class="foot-links">
-        <li><a href="/">Live map</a></li>
-        <li><a href="#records">Record days</a></li>
-        <li><a href="#check">Validation</a></li>
-      </ul>
-    </div>
-    <div class="foot-credits">
-      <p>Pictures: "Street view of rowhouses at 2442 and 2444 N Napa Street" by
-        <a href="https://commons.wikimedia.org/w/index.php?curid=178910947">Eli Pousson</a>,
-        <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC BY-SA 2.0</a>, via Wikimedia Commons;
-        "flooded schuylkill river trail" by <a href="https://www.flickr.com/photos/52861868@N07/6091799648">snake fish</a>,
-        <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>, via Flickr.</p>
-      <p>Map tiles © CARTO, data © OpenStreetMap contributors.</p>
-    </div>
-    <p class="wordmark" aria-hidden="true">Swelter</p>
-  </footer>
-
-  <script src="about.js?v=5"></script>
-</body>
-</html>
+  <footer class="foot"><p>Swelter · Built at HackPSU 2026</p><a href="/">Live map</a><p class="foot-credits">Map tiles © CARTO, data © OpenStreetMap contributors.</p></footer>
+  <script src="about.js?v=6"></script>
+</body></html>

@@ -82,3 +82,28 @@ Claude; without it the server answers from the planner's reason codes.
 - Group highlights support Enter/Space; native buttons keep their own Space behavior.
 - Verified all 48 scenario selections, playback controls, resident inspector, Methods/Validation, deep links, About form, and 390px overflow in Chrome. No page errors. Offline explanation function checked in WSL; live Claude and audible speech not verified.
 - APIs, simulation data, routes, and backend unchanged. No commit created.
+
+
+## Trained thermal shelter models — Oct 25, 2026
+- Branch codex/thermal-shelter-models. Separate heat and cold RandomForestClassifier artifacts trained from baseline simulated exposure labels, 79,560 resident-hours per hazard across three observed weather days. These are simulator surrogates, not validated health/shelter outcome predictors.
+- scripts/train_shelters.py trains, evaluates grouped diary holdouts plus unseen-day folds, saves models/shelters artifacts/manifests and app/data/shelter_models.json. Optional ml dependency; normal server has no ML dependency. Reproduction dependencies in models/shelters/requirements.txt.
+- Shelter priorities tab ranks real cooling/warming sites for 1/3/5-site budgets using predicted baseline risk, opening hours, explicit vulnerability weights and straight-line access. Click a site to focus its numbered map marker. Replay assignments, all 48 runs, smoke/flood and APIs are preserved.
+- Eight unit tests cover artifact/input hashes, group overlap, baseline performance, marginal coverage, hours, distance and hazard eligibility. Chrome checks cover original scenarios, model panels, loading/error/retry, keyboard, mobile and live offline explanation API.
+- Heat held-out daily MAE 0.519h, cold 0.318h. Typical cold-day unseen-weather fold fails to beat constant-risk Brier baseline; shown prominently in UI. No real-world generalization claim. No route safety, capacity or current facility verification. Unhoused residents are oversampled; counts are synthetic.
+
+
+## Active scope update — Oct 25, two hazards and two responses
+- Supersedes the earlier four-hazard / 48-run UI description: active app is Heatwave or Winter storm, each Standard city or Open cooling/warming sites. Removed links fall back safely. Underlying training archives are retained.
+- Site budget 1/3/5 controls only model-selected facilities. All displayed risk/coverage metrics and map risk labels derive from trained-model probabilities. Baseline _none files supply routine geometry, activities and weather; old intervention files are never requested.
+- train_shelters.py now publishes risk_milli matrices and cumulative coverage_masks for each budget. Nine Python tests include reconstruction of all published coverage metrics.
+- Resident animation remains the baseline routine: site opening does not assume attendance or prevented harm. Explain action uses model predictions and access assumptions, not the archived intervention explanation endpoint. Validation and About now describe the two-model scope.
+- Chrome checked all 12 hazard/severity/response combinations, 1/3/5 budgets, probability totals, resident explanations, dialogs, mobile layouts, removed deep links and About form; no JavaScript errors or old response-run requests.
+
+## Sidebar cleanup — Oct 25
+- Removed the four top-line KPI blocks, the planning-estimates paragraph and the Model quality and data disclosure from the main sidebar at user request. Calculations, ranked site details and Methods/Validation remain available.
+
+## Resident UI cleanup — Oct 25
+- Removed the resident risk explanation/Listen section and priority-resident button/handler. Direct map-dot inspection remains. The sidebar hint now explains population categories, examples and how to clear the highlight.
+
+## Further sidebar cleanup — Oct 25
+- Removed hourly coverage disclosure/table/note, population-category guidance, historical context paragraph, shelter planning heading/intro and duplicate open-sites action. Standard city hides the empty site section; City response still opens the selected-site list and map markers.

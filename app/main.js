@@ -1,8 +1,8 @@
 /* Swelter front end: replays precomputed runs on a deck.gl map. Only /api/why is live. */
 (() => {
-  const HAZARD_COLOR = { heat: "#f2994a", smoke: "#9b8d7a", flood: "#4c8dff", cold: "#7fc8ff" };
+  const HAZARD_COLOR = { heat: "#f2994a", cold: "#7fc8ff" };
   const LEVEL_RGB = [[47, 143, 122], [242, 201, 76], [242, 153, 74], [235, 77, 91]];
-  const LEVEL_NAME = ["Safe", "Caution", "Danger", "Extreme"];
+  const LEVEL_NAME = ["Lower predicted risk", "", "Elevated predicted risk", ""];
   const ACT = {
     sleep: ["Sleep", "z"], home: ["Home", "⌂"], commute: ["Travel", "→"], work_indoor: ["Work", "W"],
     work_outdoor: ["Work outside", "⚒"], class: ["Class", "C"], errand: ["Errand", "$"],
@@ -23,8 +23,9 @@
   const state = {
     hazard: "heat", level: "severe", iv: "none",
     // speed is clock hours per real second: 1× = 15 min/s, so a 20-minute trip takes 1.3 s on screen
-    t: 6, playing: true, speed: 0.25, selected: null, group: null,
+    t: 6, playing: true, speed: 0.25, selected: null, group: null, siteBudget: 3,
   };
+  let modelData, updateVersion = 0;
   let M, roads = [], water = [], deckOverlay, map, run, baseRun, frame = 0, lastTs = 0;
   const runCache = new Map();
   const jitter = [];
@@ -42,7 +43,7 @@
     for (let i = 0; i < n; i++) for (let h = 0; h < H; h++) {
       const s = r.steps[i][h], k = i * H + h;
       r.place[k] = Math.floor(s / 1000); r.act[k] = Math.floor((s % 1000) / 40); r.why[k] = s % 40;
-      r.lvl[k] = +r.levels[i][h];
+      r.lvl[k] = modelData.models[r.hazard].rankings[r.level].risk_milli[i][h] >= 500 ? 2 : 0;
     }
     // trips: [depart, arrive, fromPlace, toPlace] in clock hours. Departures are the diary respondent's real minute
     // (or early in the hour for moves the hazard rules added); travel time follows the planner's walk/car/transit speeds.
@@ -85,21 +86,45 @@
     const hz = M.hazards[state.hazard];
     document.documentElement.style.setProperty("--hz", HAZARD_COLOR[state.hazard]);
     seg($("#hazard-seg"), Object.entries(M.hazards).map(([k, v]) => [k, v.label]), state.hazard, (k) => {
-      state.hazard = k; if (!M.hazards[k].interventions[state.iv]) state.iv = "none"; update();
+      state.hazard = k; state.group = null; if (!M.hazards[k].interventions[state.iv]) state.iv = "none"; update();
     });
     seg($("#level-seg"), Object.entries(hz.levels).map(([k, v]) => [k, v.label.split(" — ")[0]]), state.level, (k) => { state.level = k; update(); });
     [...$("#level-seg").children].forEach((b, i) => { const v = Object.values(hz.levels)[i]; b.title = `${v.label.split(" — ")[1]} · ${v.note}`; });
     seg($("#iv-seg"), Object.entries(hz.interventions).map(([k, v]) => [k, v.label]), state.iv, (k) => { state.iv = k; update(); });
   }
 
+  function planningSummary() {
+    const result = modelData.models[state.hazard].rankings[state.level];
+    const count = Math.min(state.siteBudget, result.sites.length);
+    const masks = state.iv === "refuge" ? result.coverage_masks[String(count)] : null;
+    const H = M.hours.length, n = M.residents.length;
+    const groups = Object.fromEntries(M.hazards[state.hazard].groups.map(g => [g, { n: 0, risk: 0, covered: 0 }]));
+    let risk = 0, covered = 0, reachablePeople = 0;
+    const hourly = M.hours.map(hour => ({hour, risk:0, covered:0}));
+    const people = M.residents.map((r,i) => {
+      let total = 0, reachable = 0, atRiskReachable = false;
+      for(let h=0;h<H;h++) {
+        const p = result.risk_milli[i][h] / 1000, c = masks?.[i]?.[h] === "1" ? p : 0;
+        total += p; reachable += c; hourly[h].risk += p; hourly[h].covered += c;
+        if (c > 0 && p >= .5) atRiskReachable = true;
+      }
+      risk += total; covered += reachable; if(atRiskReachable) reachablePeople++;
+      for(const g of r.groups) if(groups[g]) { groups[g].n++; groups[g].risk += total; groups[g].covered += reachable; }
+      return {risk:total, covered:reachable, masks:masks?.[i] || "0".repeat(H)};
+    });
+    return {result, groups, people, hourly, risk, covered, reachablePeople, n};
+  }
+
   async function update() {
+    const version = ++updateVersion;
     renderControls();
-    const [r, b] = await Promise.all([loadRun(sid()), loadRun(sid("none"))]);
-    run = r; baseRun = b;
-    renderBadge(); renderSpark(); renderCompare(); renderMatrix();
+    // The only stored replay loaded is the standard-city routine, never an old response run.
+    const r = await loadRun(sid("none"));
+    if (version !== updateVersion) return;
+    run = r; baseRun = r;
+    renderBadge(); renderSpark(); renderCompare();
+    document.dispatchEvent(new CustomEvent("swelter:scenario", { detail: { hazard: state.hazard, level: state.level, iv: state.iv } }));
     if (state.selected !== null) renderInspector();
-    // warm the cache for the other interventions at this level
-    Object.keys(M.hazards[state.hazard].interventions).forEach((iv) => loadRun(sid(iv)));
     redraw();
   }
 
@@ -107,8 +132,7 @@
     const hz = M.hazards[state.hazard], iv = hz.interventions[state.iv], lv = hz.levels[state.level];
     $("#iv-badge").innerHTML = `<b>${hz.label} · ${lv.label} · ${iv.label}</b>` +
       `<span class="muted">Real hourly record for ${lv.label.split(" — ")[1]}: ${lv.note}. ` +
-      `${iv.desc || "Baseline: no city response beyond today's normal services."}</span>`;
-    $("#history").textContent = hz.history;
+      `${iv.desc || "Standard city: baseline routines with no model-selected sites opened."}</span>`;
     $("#history-eyebrow").textContent = `${hz.label} · compare`;
   }
 
@@ -127,8 +151,6 @@
   // short hazard reading under the clock
   const READOUT = {
     heat: (v) => `${Math.round(v)}°F heat index`,
-    smoke: (v) => `AQI ${Math.round(v)}`,
-    flood: (v) => `${v.toFixed(1)} in rain / 3 h`,
     cold: (v) => `${Math.round(v)}°F wind chill`.replace("-", "−"),
   };
   function intensityAt(t) {
@@ -138,52 +160,22 @@
 
   // ---------- compare panel ----------
   function renderCompare() {
-    const hz = M.hazards[state.hazard];
-    const G = run.summary.groups, B = baseRun.summary.groups;
-    const max = Math.max(...hz.groups.map((g) => Math.max(B[g]?.danger_hours || 0, G[g]?.danger_hours || 0)), 0.5);
-    const isBase = state.iv === "none";
-    $("#compare-sub").textContent = isBase
-      ? "Doing nothing. Pick an intervention to compare."
-      : `${hz.interventions[state.iv].label} vs. doing nothing`;
-    // AQI 101-150 is "unhealthy for sensitive groups": a caution level for everyone here, so the bars are all zero
-    const peak = Math.max(...run.intensity), note = $("#compare-note");
-    note.hidden = !(state.hazard === "smoke" && baseRun.summary.all.all.danger_hours === 0);
-    if (!note.hidden) note.textContent = `Peak AQI ${Math.round(peak)} is a caution day: EPA rates 101–150 "unhealthy for ` +
-      `sensitive groups", so people with asthma or COPD, older adults and outdoor workers should cut back outdoor time, ` +
-      `but no one here reaches dangerous exposure. Try Severe or Record to see interventions make a difference.`;
-    $("#compare-bars").innerHTML = hz.groups.map((g) => {
-      const b = B[g]?.danger_hours ?? 0, v = G[g]?.danger_hours ?? 0;
-      const pct = b > 0 ? Math.round(((v - b) / b) * 100) : 0;
-      const delta = isBase ? "" : `<span class="delta ${pct < 0 ? "good" : pct > 0 ? "bad" : ""}">${pct > 0 ? "+" : ""}${pct}%</span>`;
-      return `<div class="bar-row ${state.group === g ? "on" : ""}" data-g="${g}" role="button" tabindex="0" aria-pressed="${state.group === g}" aria-label="Highlight ${M.groups[g]}">
-        <div class="bar-label"><span>${M.groups[g]} <span class="muted">· ${G[g]?.n ?? 0}</span></span>${delta}</div>
-        ${isBase ? "" : `<div class="bar-track"><div class="bar-fill base" style="width:${(b / max) * 100}%"></div></div>`}
-        <div class="bar-track"><div class="bar-fill iv" style="width:${(v / max) * 100}%"></div></div>
-        <div class="bar-nums"><span>${isBase ? "" : "nothing " + b.toFixed(1) + " h"}</span><span>${v.toFixed(1)} h${isBase ? "" : " with it"}</span></div>
-      </div>`;
+    const s = planningSummary(), isOpen = state.iv === "refuge";
+    $("#compare-title").textContent = "Predicted risk and site access";
+    $("#compare-sub").textContent = isOpen ? "ML-selected sites · coverage compared with Standard city" : "Standard city · ML-predicted baseline exposure";
+    const model = modelData.models[state.hazard];
+    const note = $("#compare-note");
+    note.hidden = !model.weaker_unseen_days?.includes(state.level);
+    note.textContent = "Limited generalization: this unseen weather-day test did not beat constant-risk predictions. Explore this stored scenario only.";
+    const maximum = Math.max(.5,...Object.values(s.groups).map(g=>g.risk / (g.n || 1)));
+    $("#compare-bars").innerHTML = Object.entries(s.groups).map(([g,v]) => {
+      const total = v.risk/(v.n||1), outside = (v.risk-v.covered)/(v.n||1);
+      return '<div class="bar-row '+(state.group===g?'on':'')+'" role="button" tabindex="0" aria-pressed="'+(state.group===g)+'" data-g="'+g+'"><div class="bar-label"><span>'+M.groups[g]+' <span class="muted">· '+v.n+'</span></span></div><div class="bar-track"><div class="bar-fill base" style="width:'+total/maximum*100+'%"></div></div>'+(isOpen?'<div class="bar-track"><div class="bar-fill iv" style="width:'+outside/maximum*100+'%"></div></div>':'')+'<div class="bar-nums"><span>baseline '+total.toFixed(1)+' h/person</span><span>'+(isOpen?outside.toFixed(1)+' outside coverage':'')+'</span></div></div>';
     }).join("");
-    document.querySelectorAll(".bar-row").forEach((el) => el.onclick = () => {
-      state.group = state.group === el.dataset.g ? null : el.dataset.g; renderCompare(); redraw();
+    document.querySelectorAll(".bar-row").forEach(el=>{
+      el.onclick=()=>{state.group=state.group===el.dataset.g?null:el.dataset.g;renderCompare();redraw();};
+      el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}};
     });
-    document.querySelectorAll(".bar-row").forEach((el) => { el.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.click(); } }; });
-    const a = run.summary.all.all, ab = baseRun.summary.all.all;
-    const pctAny = (x) => Math.round(x.share_any_danger * 100);
-    $("#kpis").innerHTML = `
-      <div class="kpi"><div class="v">${pctAny(a)}%</div><div class="l">residents with ≥1 dangerous hour${isBase ? "" : ` (was ${pctAny(ab)}%)`}</div></div>
-      <div class="kpi"><div class="v">${a.danger_hours.toFixed(2)}</div><div class="l">dangerous hours per resident${isBase ? "" : ` (was ${ab.danger_hours.toFixed(2)})`}</div></div>`;
-  }
-
-  async function renderMatrix() {
-    const hz = M.hazards[state.hazard], ivs = Object.keys(hz.interventions);
-    const runs = await Promise.all(ivs.map((iv) => loadRun(sid(iv))));
-    const head = ivs.map((iv) => `<th>${hz.interventions[iv].label.replace("Do nothing", "Nothing")}</th>`).join("");
-    const rows = hz.groups.map((g) => {
-      const vals = runs.map((r) => r.summary.groups[g]?.danger_hours ?? 0), best = Math.min(...vals);
-      return `<tr><td>${M.groups[g]}</td>${vals.map((v, i) =>
-        `<td class="${v === best && v < vals[0] ? "best" : ""} ${ivs[i] === state.iv ? "cur" : ""}">${v.toFixed(1)}</td>`).join("")}</tr>`;
-    }).join("");
-    $("#matrix").innerHTML = `<table><thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table>
-      <p class="hint">Refuges are the city's real designated sites at their posted hours. Green = best option for that group.</p>`;
   }
 
   // ---------- map ----------
@@ -215,8 +207,6 @@
         const a = Math.max(0, Math.min(1, (I - 84) / 26)), u = (uhi + 4) / 8;
         return [240, 140 - 100 * u, 60 - 40 * u, a * (10 + 120 * u * u)];
       }
-      case "smoke": { const a = Math.max(0, Math.min(1, (I - 50) / 350)); return [150, 130, 105, 12 + 85 * a + 8 * uhi]; }
-      case "flood": return flood ? [60, 130, 255, flood * Math.min(150, 30 + 45 * I)] : [0, 0, 0, 0];
       case "cold": { const v = I - wind, a = Math.max(0, Math.min(1, (32 - v) / 50)); return [120, 190, 255, 8 + 55 * a + (wind ? 35 : 0)]; }
     }
   }
@@ -224,15 +214,8 @@
   function layers() {
     const t = state.t, I = intensityAt(t), n = M.residents.length;
     const sel = state.selected, grp = state.group;
-    // the city's real cooling / warming network; "on" when this scenario opens it, labelled with who is there now
-    const kind = state.hazard === "cold" ? "warming" : "cooling";
-    const open = state.iv === "refuge" || (state.hazard === "heat" && state.iv === "transit") || state.iv === "outreach";
-    const here = new Map(), H = M.hours.length, h = Math.min(Math.floor(t - 6), H - 1);
-    for (let i = 0; i < n; i++) if (M.activities[run.act[i * H + h]] === "refuge") here.set(run.place[i * H + h], (here.get(run.place[i * H + h]) || 0) + 1);
-    const sites = M.refuges.filter((s) => state.hazard === "flood" || s[kind]).map((s) => {
-      const idx = M.placeIndex[s.id];
-      return { label: s.name, pos: [s.lon, s.lat], on: open, count: here.get(idx) || 0 };
-    });
+    const sites = []; // Standard city opens none; only the ML priority layer shows open sites.
+    const prioritySites = window.swelterShelters?.sites || [];
     return [
       new deck.SolidPolygonLayer({
         id: "overlay", data: M.grid.cells, getPolygon: (c) => c.poly,
@@ -247,7 +230,7 @@
         getWidth: (d) => (d.c === "primary" || d.c === "trunk" ? 14 : 7), widthMinPixels: 0.6,
       }),
       new deck.ScatterplotLayer({
-        id: "sites", data: sites, getPosition: (d) => d.pos, stroked: true, filled: true,
+        id: "sites", data: window.swelterShelters?.active ? [] : sites, getPosition: (d) => d.pos, stroked: true, filled: true,
         radiusMinPixels: 4, lineWidthMinPixels: 1.5,
         getFillColor: (d) => (d.on ? [90, 209, 230, 60] : [255, 255, 255, 10]),
         getLineColor: (d) => (d.on ? [90, 209, 230, 255] : [139, 149, 167, 150]),
@@ -255,7 +238,7 @@
         updateTriggers: { getRadius: frame, getFillColor: state.hazard + state.iv, getLineColor: state.hazard + state.iv },
       }),
       new deck.TextLayer({
-        id: "site-labels", data: sites.filter((s) => s.count > 0), getPosition: (d) => d.pos,
+        id: "site-labels", data: window.swelterShelters?.active ? [] : sites.filter((s) => s.count > 0), getPosition: (d) => d.pos,
         getText: (d) => `${d.label} · ${d.count}`, getSize: 12,
         getColor: [210, 245, 252, 255], getPixelOffset: [0, -18],
         fontFamily: "Inter, sans-serif", fontWeight: 600, outlineWidth: 3, outlineColor: [11, 14, 19, 230],
@@ -276,6 +259,20 @@
         updateTriggers: { getPosition: frame, getFillColor: [frame, grp], getRadius: sel, getLineColor: sel },
         onClick: (info) => { state.selected = info.index; renderInspector(); redraw(); },
         onHover: (info) => showTip(info),
+      }),
+      new deck.ScatterplotLayer({
+        id: "shelter-priorities", data: prioritySites, pickable: true,
+        getPosition: (s) => [s.lon, s.lat], getRadius: 140, radiusMinPixels: 13, radiusMaxPixels: 24,
+        stroked: true, lineWidthMinPixels: 2,
+        getFillColor: (s) => s.id === window.swelterShelters?.selected ? [240, 241, 241, 255] : [139, 207, 195, 255],
+        getLineColor: [16, 19, 20, 255], updateTriggers: { getFillColor: window.swelterShelters?.selected },
+        onClick: ({ object }) => { if (object) window.swelterShelters.select(object.id); },
+      }),
+      new deck.TextLayer({
+        id: "shelter-priority-ranks", data: prioritySites,
+        getPosition: (s) => [s.lon, s.lat], getText: (s) => String(s.rank),
+        getColor: [16, 19, 20, 255], getSize: 13, fontWeight: 700,
+        fontFamily: "Inter, sans-serif",
       }),
     ];
   }
@@ -304,8 +301,9 @@
     const now = document.getElementById("spark-now");
     if (now) { now.setAttribute("x1", x); now.setAttribute("x2", x); }
     $("#readout").textContent = READOUT[state.hazard](intensityAt(state.t));
-    const h = Math.min(Math.floor(state.t - 6), 16), counts = run.summary.hourly_levels[h];
-    $("#legend").innerHTML = counts.map((c, l) => `<span><i style="background:rgb(${LEVEL_RGB[l]})"></i>${LEVEL_NAME[l]} <b>${c}</b></span>`).join("");
+    const h = Math.min(Math.floor(state.t - 6), 16), counts = [0,0,0,0];
+    for(let i=0;i<M.residents.length;i++) counts[run.lvl[i*M.hours.length+h]]++;
+    $("#legend").innerHTML = counts.map((c, l) => LEVEL_NAME[l] ? `<span><i style="background:rgb(${LEVEL_RGB[l]})"></i>${LEVEL_NAME[l]} <b>${c}</b></span>` : "").join("");
     if (state.selected !== null) {
       document.querySelectorAll(".timeline .cell").forEach((el) => el.classList.toggle("now", +el.dataset.h === h));
     }
@@ -330,7 +328,7 @@
     const i = state.selected, r = M.residents[i], el = $("#inspector");
     el.hidden = false;
     const rows = dayRows(run, i), base = dayRows(baseRun, i);
-    const dh = rows.filter((d) => d.lvl >= 2).length, bdh = base.filter((d) => d.lvl >= 2).length;
+    const personal = planningSummary().people[i];
     const flags = run.flags[i];
     const groups = r.groups.filter((g) => M.hazards[state.hazard].groups.includes(g) || g === "driver" || g === "no_car");
     const traits = r.role === "unhoused" ? [r.respiratory ? "asthma/COPD" : null].filter(Boolean) : [
@@ -351,116 +349,23 @@
         <span class="chip">${flags & 1 ? "heard the warning" : "missed the warning"}</span></div>
       <div class="trace">Traces to <b>${r.source}</b><ul>${Object.entries(r.trace)
         .filter(([k]) => k !== (state.hazard === "cold" ? "day_summer" : "day_winter")).map(([, t]) => `<li>${t}</li>`).join("")}</ul></div>
-      ${state.iv !== "none" ? `<div class="tl-label"><span>If the city did nothing</span><span>${bdh} dangerous h</span></div>${timeline(base)}` : ""}
-      <div class="tl-label"><span>${state.iv === "none" ? "Their day" : "With " + M.hazards[state.hazard].interventions[state.iv].label}</span><span>${dh} dangerous h</span></div>
+      <p class="hint">Baseline routine; opening sites does not assume this resident attends.</p>
+      <div class="tl-label"><span>ML-predicted risk</span><span>${personal.risk.toFixed(1)} expected h · ${personal.covered.toFixed(1)} within reach</span></div>
       ${timeline(rows)}
       <div class="tl-hours">${M.hours.map((h) => `<span>${h % 3 === 0 ? ((h + 11) % 12) + 1 : ""}</span>`).join("")}</div>
       <div class="steps">${rows.map((d) => `<div class="step"><span class="h">${((d.hour + 11) % 12) + 1}${d.hour < 12 ? "a" : "p"}</span>
         <span><span style="color:rgb(${LEVEL_RGB[d.lvl]})">●</span> ${ACT[d.act][0]} · ${d.place}<div class="why">${d.why}</div></span></div>`).join("")}</div>
-      <div class="why-box">
-        <button class="why-btn" id="why-btn">Why did ${r.name} do this?</button>
-        <div id="why-out"></div>
-      </div>`;
+      `;
     document.querySelectorAll(".timeline .cell").forEach((c) => c.classList.toggle("now", +c.dataset.h === nowH));
-    $("#why-btn").onclick = () => explain(i);
-  }
-
-  // The resident whose day changed most under this intervention (or the most exposed one at baseline).
-  function featured() {
-    const H = M.hours.length, n = M.residents.length, grp = state.group;
-    const dh = (r, i) => { let c = 0; for (let h = 0; h < H; h++) if (r.lvl[i * H + h] >= 2) c++; return c; };
-    let best = -1, score = -1, seen = (featured.seen ||= new Set());
-    for (let i = 0; i < n; i++) {
-      if (grp && !M.residents[i].groups.includes(grp)) continue;
-      const sc = (state.iv === "none" ? dh(run, i) : dh(baseRun, i) - dh(run, i)) - (seen.has(i) ? 100 : 0);
-      if (sc > score) { score = sc; best = i; }
-    }
-    if (best < 0) return;
-    seen.add(best);
-    state.selected = best;
-    const k = best * H + Math.min(Math.floor(state.t - 6), H - 1), p = M.places[run.place[k]];
-    map.flyTo({ center: [p[4], p[3]], zoom: 14.2, duration: 900 });
-    renderInspector(); redraw();
-  }
-
-  async function explain(i) {
-    const btn = $("#why-btn"), out = $("#why-out");
-    btn.disabled = true; btn.textContent = "Asking…";
-    try {
-      const res = await fetch("api/why", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenario: sid(), resident: i }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || res.status);
-      out.innerHTML = `<div class="why-text"></div><div class="why-src"><span>${j.source === "offline" ? "Offline explanation from the planner's reason codes" : "Live explanation · " + j.source}</span><button id="speak">▶ Listen</button></div>`;
-      out.querySelector(".why-text").textContent = j.text;
-      $("#speak").onclick = () => speak(j.text);
-    } catch (e) {
-      out.innerHTML = `<div class="why-text muted">Explainer unavailable (${e.message}). Is server.py running?</div>`;
-    }
-    btn.disabled = false; btn.textContent = `Why did ${M.residents[i].name} do this?`;
-  }
-  function speak(text) {
-    if (!("speechSynthesis" in window)) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.rate = 1.02;
-    speechSynthesis.speak(u);
   }
 
   // ---------- modals ----------
   function openModal(html) { $("#modal-body").innerHTML = html; $("#modal").showModal(); }
-  async function showValidation() {
-    let v = null;
-    try { v = await fetch("data/validation.json").then((r) => (r.ok ? r.json() : null)); } catch (e) { /* not built yet */ }
-    if (!v) return openModal(`<h2>Validation</h2><p>Validation data not built yet. Run <code>python3 scripts/validate.py</code>.</p>`);
-    openModal(renderValidation(v));
-  }
-  function renderValidation(v) {
-    // Diverging bars around zero: real (gray) vs simulated (orange) hot-day change per category.
-    const w = 760, h = 300, padL = 40, padR = 20, top = 34, bot = 40, rows = v.rows;
-    const ext = Math.max(5, ...rows.flatMap((r) => [Math.abs(r.real), Math.abs(r.sim)])) * 1.15;
-    const y = (x) => top + ((ext - x) / (2 * ext)) * (h - top - bot);
-    const bw = (w - padL - padR) / rows.length;
-    const bar = (x0, val, fill) => {
-      const y0 = y(Math.max(val, 0)), hh = Math.max(1.5, Math.abs(y(val) - y(0)));
-      return `<rect x="${x0}" y="${y0}" width="${bw * 0.28}" height="${hh}" fill="${fill}" rx="3"/>
-        <text x="${x0 + bw * 0.14}" y="${val >= 0 ? y0 - 4 : y0 + hh + 12}" text-anchor="middle" font-size="10.5" fill="#c3cad6" font-family="JetBrains Mono">${val > 0 ? "+" : ""}${val.toFixed(1)}</text>`;
-    };
-    const bars = rows.map((r, i) => {
-      const x0 = padL + i * bw + bw * 0.2;
-      return bar(x0, r.real, "#8b95a7") + bar(x0 + bw * 0.31, r.sim, "#f2994a") +
-        `<text x="${x0 + bw * 0.3}" y="${h - 12}" text-anchor="middle" font-size="12" fill="#c3cad6">${r.label}</text>`;
-    }).join("");
-    const cal = (v.calibration || []).map((c) => `<tr><td>${c.version}</td><td style="font-family:var(--mono)">${c.mae_pp.toFixed(1)} pp</td></tr>`).join("");
-    return `<h2>Validation: do simulated residents react to heat like real Philadelphians?</h2>
-      <p>${v.description}</p>
-      <svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Real vs simulated hot-day change by category">
-        <line x1="${padL}" x2="${w - padR}" y1="${y(0)}" y2="${y(0)}" stroke="#3a4352"/>
-        ${bars}
-        <text x="${padL}" y="16" font-size="12" fill="#8b95a7">${v.y_label}</text>
-        <rect x="${w - 320}" y="6" width="10" height="10" fill="#8b95a7"/><text x="${w - 305}" y="15" font-size="12" fill="#c3cad6">Real (${v.real_source_short})</text>
-        <rect x="${w - 100}" y="6" width="10" height="10" fill="#f2994a"/><text x="${w - 85}" y="15" font-size="12" fill="#c3cad6">Simulated</text>
-      </svg>
-      <p><b style="font-size:20px;font-family:var(--mono)">${v.error_label}</b></p>
-      ${cal ? `<p style="margin-bottom:6px"><b>Calibration log</b></p><table>${cal}</table>` : ""}
-      <p class="muted">${v.notes}</p>`;
+  function showValidation() {
+    openModal('<h2>Trained-model evaluation</h2><p>Held-out diary groups; targets are simulated baseline danger, not observed health or shelter outcomes.</p><table><tr><th>Model</th><th>Daily MAE</th><th>Danger recall</th><th>Brier</th><th>Constant baseline</th></tr>'+Object.entries(modelData.models).map(([hz,m])=>'<tr><td>'+M.hazards[hz].label+'</td><td>'+m.metrics.daily_hours_mae+' h/person</td><td>'+Math.round(m.metrics.danger_recall*100)+'%</td><td>'+m.metrics.brier+'</td><td>'+m.metrics.constant_baseline_brier+'</td></tr>').join('')+'</table><p>The typical cold-day unseen-weather fold did not beat the constant-risk baseline. Geography is not independently held out. Only three historical days per hazard are available.</p>');
   }
   function showMethods() {
-    const row = ([k, v]) => `<tr><td><code>${k}</code></td><td>${typeof v.value === "object" ? JSON.stringify(v.value) : v.value}</td><td>${v.source}</td></tr>`;
-    const lv = Object.entries(M.hazards).map(([, h]) => `<tr><td>${h.label}</td>${Object.values(h.levels).map((l) => `<td>${l.label.split(" — ")[1]}</td>`).join("")}</tr>`).join("");
-    openModal(`<h2>Methods</h2>
-      <p><b>Hazard days are real.</b> Each level replays one real day, hour by hour: the median event day, the 95th-percentile event day and the worst day on record. Heat index and wind chill come from NOAA hourly observations at PHL (2010–2024); rain is the trailing 3-hour total at PHL; smoke is the EPA PM2.5 NowCast AQI averaged over Philadelphia County monitors (2010–2025), counting only May–September days at AQI 101 or worse with a NOAA satellite-mapped smoke plume over the city (22 days; this drops winter inversions and July 4 fireworks).</p>
-      <table><tr><th></th><th>Typical</th><th>Severe</th><th>Record</th></tr>${lv}</table>
-      <p><b>World.</b> ${M.places.length.toLocaleString()} real places from OpenStreetMap plus the city's ${M.refuges.length} open cooling / warming sites and their posted hours (City of Philadelphia open data). Flood zones are FEMA's 2023 map; local heat is the city's 2023 Heat Exposure Index.</p>
-      <p><b>People.</b> ${M.residents.length.toLocaleString()} synthetic adults sampled from ${new Set(M.residents.map((r) => r.tract)).size} Census tracts: age, employment and occupation, college enrollment, poverty, cars and living alone come from ACS 2024 tract tables; AC and heating access from EIA RECS 2020 (Pennsylvania, by poverty); asthma / COPD from CDC PLACES tract estimates. Unhoused residents are placed in Kensington and Center City and oversampled.</p>
-      <p><b>Days are real.</b> Each housed resident's ordinary weekday is a real American Time Use Survey diary (2018–2024) from a respondent with the same role and age group, Philadelphia metro first, then other Northeast metro areas (summer diaries for heat, smoke and flood; winter diaries for cold). No survey covers unsheltered days, so theirs is a schedule around meal programs and library hours.</p>
-      <p><b>Behavior.</b> Hazard rules change the diary day (warnings, avoiding outdoor time, refuges, flood driving). Their free parameters are fit to Philadelphia hot-day mobility (Google, 2020–21) and checked on 2022. Every hour stays inside a fixed list of activities and real places; a plausibility verifier rejects impossible days. The same schema constrains Claude when it plans instead of the rules.</p>
-      <p><b>Exposure.</b> Deterministic: hourly hazard × share of the hour outdoors × the indoor environment where the resident is (AC, heat, HEPA, flood zone). Danger thresholds follow NWS heat index, EPA AQI and wind-chill categories, tightened for older adults, people with asthma / COPD and unhoused residents.</p>
-      <p><b>Data sources</b></p><table>${Object.entries(M.sources).map(row).join("")}</table>
-      <p><b>Still assumed</b> (no dataset found): indoor temperatures and filtration by home type, the Heat Exposure Index → °F scale (1 unit = 1°F), flood-zone weights, riverfront wind, warning awareness (~55%) and refuge travel limits. Plus:</p>
-      <table>${Object.entries(M.assumptions).map(row).join("")}</table>
-      <p class="muted">Generated ${M.generated}. All data public.</p>`);
+    openModal('<h2>Methods</h2><p>Two trained random forests predict baseline dangerous-exposure probability per resident-hour. The map shows baseline routines with ML risk labels; selected sites do not automatically change resident behavior.</p><p>Real inputs: NOAA weather, city cooling/warming facilities and posted hours, city heat maps. ACS, RECS, CDC PLACES and ATUS inform synthetic residents and routines. Unhoused schedules are assumed and oversampled.</p><p>Standard city opens no model-selected sites. Open sites selects the top 1, 3 or 5 facilities using trained-model probabilities and a greedy coverage objective. Old precomputed intervention outcomes are not loaded.</p><p>Priority weights: '+modelData.policy.weights+'. Distance discount: '+modelData.policy.proximity+'. Reach: '+modelData.policy.reach_m+'. Candidate facilities must be open in the relevant hour.</p><p>Risk-hours sum danger probabilities. Within-reach risk is access opportunity, not prevented exposure. Capacity, route safety, attendance and current facility conditions are unverified.</p>');
   }
 
   // ---------- loop ----------
@@ -476,7 +381,11 @@
   }
 
   async function init() {
-    M = await fetch("data/meta.json").then((r) => r.json());
+    [M, modelData] = await Promise.all([fetch("data/meta.json").then(r=>r.json()), fetch("data/shelter_models.json?v=2").then(r=>{if(!r.ok) throw Error("Model results unavailable");return r.json();})]);
+    M.hazards = Object.fromEntries(["heat", "cold"].map(hz=>[hz, {...M.hazards[hz], interventions: {
+      none: {label:"Standard city", desc:"Baseline routines with no model-selected sites opened."},
+      refuge: {label:hz==='heat'?"Open cooling sites":"Open warming sites", desc:"Trained-model risk predictions select sites; metrics measure potential access, not guaranteed exposure reduction."}
+    }}]));
     M.placeIndex = Object.fromEntries(M.places.map((p, i) => [p[0], i]));
     const g = M.grid.step / 2;
     for (const c of M.grid.cells) c.poly = [[c[1] - g, c[0] - g], [c[1] + g, c[0] - g], [c[1] + g, c[0] + g], [c[1] - g, c[0] + g]];
@@ -500,9 +409,10 @@
     };
     $("#play").classList.add("playing");
     $("#speed").onchange = (e) => { state.speed = +e.target.value; };
-    $("#btn-feature").onclick = featured;
-    window.swelter = { state, select: (i) => { state.selected = i; renderInspector(); redraw(); }, featured,
-      get run() { return run; }, residentPos };
+    window.swelter = { state, select: (i) => { state.selected = i; renderInspector(); redraw(); },
+      get run() { return run; }, get models() { return modelData; }, get meta() { return M; }, summary: planningSummary,
+      setResponse: (iv)=>{if(iv==='none'||iv==='refuge'){state.iv=iv;update();}}, setBudget: (n)=>{if([1,3,5].includes(n)){state.siteBudget=n;update();}}, residentPos, refreshMap: redraw,
+      focusSite: (lon, lat) => map.flyTo({ center: [lon, lat], zoom: 14.2, duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 600 }) };
     $("#insp-close").onclick = () => { state.selected = null; $("#inspector").hidden = true; redraw(); };
     $("#btn-methods").onclick = showMethods;
     $("#btn-validate").onclick = showValidation;
@@ -526,5 +436,5 @@
     await update();
     requestAnimationFrame(tick);
   }
-  init();
+  init().catch(e=>{ $("#compare-sub").textContent="Unable to load model data: "+e.message+". Reload to retry."; $("#compare-sub").setAttribute("role","alert"); });
 })();

@@ -272,3 +272,35 @@ button, select, input { font: inherit; color: inherit; }
 .controls { grid-row:2; }
 .map-badge, .timebar { z-index:2; }
 .legend { flex-wrap:wrap; }
+
+/* Trained shelter planning layer. */
+[hidden] { display:none!important; }
+.panel-tabs { display:flex; gap:20px; border-bottom:1px solid var(--line); margin:-6px 0 22px; }
+.panel-tabs button { padding:10px 0; border:0; border-bottom:2px solid transparent; background:none; color:var(--muted); cursor:pointer; font-size:12px; }
+.panel-tabs button[aria-selected="true"] { color:var(--text); border-bottom-color:var(--accent); }
+#shelter-panel h2 { margin:8px 0; }
+#shelter-intro { font-size:12px; line-height:1.6; }
+.shelter-budget { display:flex; align-items:center; justify-content:space-between; font-size:12px; margin:20px 0; }
+.shelter-budget select { background:var(--bg); border:1px solid var(--line); border-radius:3px; padding:7px 10px; }
+.shelter-summary { display:flex; gap:14px; align-items:center; padding:16px 0; border-block:1px solid var(--line); }
+.shelter-summary strong { font:600 28px var(--mono); color:var(--accent); }
+.shelter-summary span { font-size:12px; line-height:1.5; }
+.shelter-list { list-style:none; padding:0; margin:16px 0; }
+.shelter-list li { border-bottom:1px solid var(--line); padding:14px 0; }
+.shelter-site { width:100%; display:flex; gap:10px; align-items:flex-start; text-align:left; padding:6px; margin:-6px; border:0; background:none; cursor:pointer; border-radius:3px; }
+.shelter-site:hover,.shelter-site.selected { background:var(--panel-2); }
+.shelter-site strong { font-size:13px; font-weight:600; }
+.shelter-rank { min-width:24px; height:24px; background:var(--accent); color:var(--bg); display:grid; place-items:center; font:600 12px var(--mono); border-radius:3px; }
+.site-address { display:block; font-size:11px; margin-top:4px; line-height:1.6; overflow-wrap:anywhere; }
+.shelter-site-metrics { font-size:11px; line-height:1.7; margin:12px 0 0 34px; color:var(--muted); }
+.shelter-caveat { border-left:2px solid var(--accent); padding-left:12px; font-size:12px; line-height:1.6; }
+.model-details { margin-top:20px; font-size:12px; line-height:1.7; }
+.model-details summary { cursor:pointer; color:var(--accent); padding:8px 0; }
+.model-details dl { display:grid; grid-template-columns:1fr auto; gap:6px 12px; }
+.model-details dt { color:var(--muted); }.model-details dd { margin:0; text-align:right; font-family:var(--mono); }
+.model-details a { color:var(--accent); }.model-day-tests { padding-left:18px; }
+
+#shelter-panel { border-top:1px solid var(--line); margin-top:24px; padding-top:24px; }
+.hourly-details { margin-top:20px; font-size:12px; }.hourly-details summary { cursor:pointer; padding:8px 0; color:var(--accent); }
+
+.controls .shelter-budget { margin:0; display:flex; flex-direction:column; align-items:flex-start; gap:7px; font-size:11px; color:var(--muted); font-weight:600; }.controls .shelter-budget select { min-height:34px; padding:6px 10px; color:var(--text); }

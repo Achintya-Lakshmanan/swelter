@@ -1,9 +1,8 @@
+<!-- Current UI scope: heat/cold, two responses, ML predictions and site-access metrics. The data-pipeline sections below also document retained training archives. -->
 # Swelter — Philadelphia disaster what-if simulator
 
-Pick a hazard (heatwave, wildfire smoke, flash flood, winter storm), a severity, and a city intervention. The map
-replays a real day (6am–10pm) for 1,560 synthetic Philadelphians, colored by exposure. The compare panel shows
-dangerous-exposure hours by group vs. doing nothing; click a resident for their persona, day timeline, and a live
-"why" explanation.
+Pick Heatwave or Winter storm, a severity, and one of two responses: Standard city or Open cooling/warming sites. The map
+replays a real day (6am–10pm) for 1,560 synthetic Philadelphians, colored by exposure. The app uses two trained random forests for risk predictions and model-driven shelter priorities. Compare predicted risk-hours, site coverage and uncovered risk by group and hour. Click a resident for their persona, baseline routine and a model-grounded explanation.
 
 Everything the simulation runs on is real data: the hazard days, the people, their routines, the flood and heat maps,
 and the city's cooling and warming sites. Remaining assumptions are listed in the app's Methods modal.
@@ -14,10 +13,9 @@ and the city's cooling and warming sites. Remaining assumptions are listed in th
 uv run server.py
 ```
 
-Open http://localhost:8000. Set `ANTHROPIC_API_KEY` first to make the "Why?" button call Claude live; without
-it the button gives an offline explanation built from the planner's reason codes.
+Open http://localhost:8000. The current interface uses trained-model outputs for risk and site coverage. Its explanation action describes those model estimates. The server also retains the older /api/why endpoint for archived simulation workflows.
 
-All runs are precomputed in `app/data/`. The server only serves files and `/api/why`.
+The normal server serves precomputed ML predictions and rankings; it does not need scikit-learn at runtime.
 
 ## Rebuild the data
 
@@ -84,3 +82,37 @@ categories is off by 0.6 percentage points on average (the hand-tuned prototype 
 says warned residents mostly shift outdoor plans to cooler hours rather than cancel them. ATUS diaries from five I-95
 metros were also checked against NOAA highs, but the hot-day change was too uncertain to fit (95% interval −55% to
 +160%), so ATUS sets the routines, not the hot-day parameters.
+
+
+## Trained heat/cold shelter priorities
+
+The **Shelter priorities** tab is available for heatwaves and winter storms. Choose 1, 3, or 5 real city-designated sites, inspect their marginal coverage, and click a ranked site to locate it on the map. Smoke and flood retain their existing behavior. The planning layer does not reassign residents or alter the original replay.
+
+Two separate random-forest classifiers predict the probability of baseline simulated dangerous exposure for each resident-hour. Their target comes from stored simulation levels, not observed injuries, demand, or shelter outcomes. Inputs include weather, simulated baseline activity, resident attributes, and local heat/wind modifiers. A greedy coverage optimizer uses those probabilities to rank real facilities by open hours, straight-line access, vulnerability, and proximity. These are priorities among existing facilities, not approved construction locations.
+
+Each hazard has 79,560 examples (1,560 synthetic residents × 17 hourly slots × 3 real historical weather days). All hours and severities sharing an ATUS diary stay in the same train/test group; assumed unhoused schedules are grouped by home anchor. Held-out scores compare against a constant-risk baseline. Separate tests also withhold a weather day and the test diary groups. Final ranking models are refit on all examples after evaluation. Models do not establish real-world or future-event validity; geography is not independently held out.
+
+Reachable risk-hours sum predicted danger probabilities during opening hours. They are **not hours prevented**. Site coverage is uncapacitated; routes, current operating conditions, accessibility and facility capacity are unverified. Unhoused residents are oversampled, so counts are simulation counts rather than estimates of Philadelphia's population. The optimizer's vulnerability weights and access radii are documented assumptions, not learned effects.
+
+Reproduce the tested training environment in WSL (Python 3.12):
+
+```bash
+python3 -m venv .venv-ml
+.venv-ml/bin/python -m pip install -r models/shelters/requirements.txt
+.venv-ml/bin/python scripts/train_shelters.py
+.venv-ml/bin/python -m unittest discover -s tests -v
+```
+
+Alternatively install the optional dependency with `uv sync --extra ml` and run the script with `uv run --extra ml python scripts/train_shelters.py`. The normal app server does not require ML packages: it serves the precomputed report and rankings.
+
+Artifacts: `models/shelters/heat.joblib` and `cold.joblib`; adjacent manifests record source hashes, feature order, library versions, group splits and evaluation. Load only trusted joblib artifacts. Browser results and the model card are in `app/data/shelter_models.json`. Retrain after changing residents, baseline runs or metadata. Training dependencies are recorded in `models/shelters/requirements.txt`.
+
+Current held-out diary-group daily exposure MAE: heat 0.519 h/person; cold 0.318 h/person. On jointly held-out weather days and diary groups, MAE ranges from 0.543–0.950 h for heat and 0.552–0.951 h for cold. The typical cold-day fold has worse Brier score than the constant-risk baseline (0.04132 vs 0.03516); the interface flags this limitation prominently. These are simulator agreement scores.
+
+## Current two-response workflow (Oct 25)
+
+The active app includes only heatwaves and winter storms, each with Standard city and Open cooling/warming sites. Legacy hazard and intervention files remain as archived data but are not loaded by the UI. Removed-hazard deep links fall back to Heatwave; unsupported response links fall back to Standard city.
+
+Standard city shows ML-predicted baseline risk with zero model-selected sites. Open sites displays the top 1/3/5 real facilities selected from model predictions and reports risk-hours within reach, outside coverage, unique at-risk synthetic residents within reach, and hourly/group breakdowns. All metrics aggregate published ML probabilities and cumulative coverage masks; no old intervention exposure summaries are used. The baseline routine files supply positions, activities and weather only. Map risk colors and resident risk summaries use the ML predictions. Opening sites does not assert attendance or prevented exposure.
+
+The active Validation dialog reports the two trained models, and explanations describe predicted risk and reach without invoking historical intervention outcomes. The historical explainer endpoint and pipeline archives are retained for reproducibility, but are not used by the current interface. The About page reflects the two-hazard workflow.

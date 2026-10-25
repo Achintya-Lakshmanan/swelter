@@ -6,3 +6,4 @@ __pycache__/
 .playwright-cli/
 .taste-skill/before/
 .taste-skill/after/
+.venv-ml/

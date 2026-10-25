@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b0e13">
   <title>Swelter · Philadelphia</title>
   <link rel="stylesheet" href="vendor/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=8">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 </head>
@@ -23,6 +23,9 @@
       <div class="control-field"><span class="control-label">Hazard</span><div class="seg" id="hazard-seg" role="group" aria-label="Hazard"></div></div>
       <div class="control-field"><span class="control-label">Severity</span><div class="seg" id="level-seg" role="group" aria-label="Severity"></div></div>
       <div class="control-field response-field"><span class="control-label">City response</span><div class="seg" id="iv-seg" role="group" aria-label="Intervention"></div></div>
+        <label class="shelter-budget control-field" for="shelter-budget">Sites to open
+          <select id="shelter-budget"><option value="1">1 site</option><option value="3" selected>3 sites</option><option value="5">5 sites</option></select>
+        </label>
     </nav>
     <div class="top-actions">
       <button class="ghost" id="btn-validate">Validation</button>
@@ -64,6 +67,7 @@
     </section>
 
     <aside class="panel" id="panel">
+      <div id="exposure-panel">
       <div class="panel-head">
         <div class="eyebrow" id="history-eyebrow">Compare</div>
         <h2 id="compare-title">Dangerous hours per person</h2>
@@ -71,12 +75,11 @@
       </div>
       <p class="caution" id="compare-note" hidden></p>
       <div id="compare-bars" class="bars"></div>
-      <div class="kpis" id="kpis"></div>
-      <div class="section-title">Compare all responses · hours per person</div>
-      <div id="matrix" class="matrix"></div>
-      <button class="feature-btn" id="btn-feature">Inspect a changed day</button>
-      <p class="hint">Click a group to highlight its residents on the map. Click any dot to inspect a resident.</p>
-      <div class="history" id="history"></div>
+      </div>
+      <section id="shelter-panel" aria-label="Selected sites" hidden>
+
+        <div id="shelter-body" aria-live="polite" aria-atomic="true"></div>
+      </section>
     </aside>
   </main>
 
@@ -87,6 +90,7 @@
 
   <script src="vendor/maplibre-gl.js"></script>
   <script src="vendor/deckgl.min.js"></script>
-  <script src="main.js?v=5"></script>
+  <script src="main.js?v=10"></script>
+  <script src="shelters.js?v=4"></script>
 </body>
 </html>
