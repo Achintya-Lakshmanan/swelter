@@ -2,97 +2,104 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0e13">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
   <title>ChillySOS · Philadelphia</title>
-  <link rel="stylesheet" href="vendor/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=12">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
+  <a class="skip" href="#panel">Skip to results</a>
   <header class="topbar">
-    <div class="brand">
-      <span class="logo" aria-hidden="true"></span>
-      <div>
-        <h1 class="brand-name">ChillySOS</h1>
-        <div class="brand-sub">Philadelphia · Disaster simulator</div>
-      </div>
-    </div>
+    <a class="brand" href="/" aria-label="ChillySOS home"><span class="logo" aria-hidden="true"></span><span class="brand-name">ChillySOS</span><span class="brand-sub">Philadelphia</span></a>
     <nav class="controls" aria-label="Scenario">
       <div class="control-field"><span class="control-label">Hazard</span><div class="seg" id="hazard-seg" role="group" aria-label="Hazard"></div></div>
-      <div class="control-field"><span class="control-label">Severity</span><div class="seg" id="level-seg" role="group" aria-label="Severity"></div></div>
-      <div class="control-field response-field"><span class="control-label">City response</span><div class="seg" id="iv-seg" role="group" aria-label="Intervention"></div></div>
-        <label class="shelter-budget control-field" for="shelter-budget">Sites to open
-          <select id="shelter-budget"><option value="1">1 site</option><option value="3" selected>3 sites</option><option value="5">5 sites</option></select>
-        </label>
+      <div class="control-field"><span class="control-label">Day</span><div class="seg" id="level-seg" role="group" aria-label="Severity"></div></div>
+      <div class="control-field response-field"><span class="control-label">City response</span><div class="seg" id="iv-seg" role="group" aria-label="City response"></div></div>
+      <label class="shelter-budget control-field" for="shelter-budget"><span class="control-label">Sites</span>
+        <select id="shelter-budget"><option value="1">1 site</option><option value="3" selected>3 sites</option><option value="5">5 sites</option></select>
+      </label>
     </nav>
     <div class="top-actions">
-      <button class="ghost" id="btn-validate">Validation</button>
-      <button class="ghost" id="btn-methods">Methods</button>
-      <a class="ghost" href="about.html">About</a>
     </div>
   </header>
 
   <main class="layout">
-    <section class="map-wrap">
+    <section class="map-wrap" aria-label="Map replay">
       <div id="map"></div>
-      <div class="map-badge" id="iv-badge"></div>
+      <div class="hud-title">
+        <h1 class="finding" id="finding">Loading the day…</h1>
+        <p class="finding-sub" id="finding-sub"></p>
+        <div class="map-badge" id="iv-badge" aria-live="polite"></div>
+      </div>
       <div id="tooltip" class="tooltip" hidden></div>
 
-      <aside class="inspector" id="inspector" hidden>
-        <button class="close" id="insp-close" aria-label="Close">×</button>
+      <aside class="inspector" id="inspector" aria-labelledby="insp-title" hidden>
+        <button class="close" id="insp-close" aria-label="Close resident details">×</button>
         <div id="insp-body"></div>
       </aside>
 
       <div class="timebar">
         <button class="play" id="play" aria-label="Pause"></button>
         <div class="clockbox">
-          <div class="clock" id="clock">6:00 AM</div>
+          <div class="clock" id="clock">11:00 AM</div>
           <div class="readout" id="readout"></div>
         </div>
         <div class="time-track">
-          <svg id="spark" class="spark" preserveAspectRatio="none"></svg>
-          <input type="range" id="time" min="6" max="22.99" step="0.01" value="6" aria-label="Time of day">
-          <div class="ticks" id="ticks"></div>
+          <svg id="spark" class="spark" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <input type="range" id="time" min="6" max="22.99" step="0.01" value="11" aria-label="Time of day">
+          <div class="ticks" id="ticks" aria-hidden="true"></div>
         </div>
-        <div class="legend" id="legend"></div>
+        <button class="ghost peak" id="peak">Peak</button>
         <select id="speed" class="speed" aria-label="Playback speed">
+          <option value="0.0625">0.25×</option>
           <option value="0.125">0.5×</option>
           <option value="0.25" selected>1×</option>
           <option value="0.5">2×</option>
           <option value="1">4×</option>
         </select>
+        <div class="keyrow">
+          <div class="legend" id="legend"></div>
+          <div class="ramp" id="ramp"></div>
+        </div>
       </div>
     </section>
 
-    <aside class="panel" id="panel">
+    <aside class="panel" id="panel" tabindex="-1">
+      <section class="filter" aria-labelledby="filter-h">
+        <div class="filter-head"><h2 id="filter-h">Find residents</h2><button type="button" class="link" id="filter-clear" hidden>Clear</button></div>
+        <div class="filter-selects">
+          <label><span class="visually-hidden">Occupation</span><select id="filter-role"></select></label>
+          <label><span class="visually-hidden">Age</span><select id="filter-age"></select></label>
+        </div>
+        <div class="filter-traits" id="filter-traits" role="group" aria-label="Circumstances"></div>
+        <p class="filter-summary" id="filter-summary" aria-live="polite"></p>
+      </section>
       <div id="exposure-panel">
-      <div class="panel-head">
-        <div class="eyebrow" id="history-eyebrow">Compare</div>
-        <h2 id="compare-title">Dangerous hours per person</h2>
-        <p class="muted" id="compare-sub"></p>
-      </div>
-      <p class="caution" id="compare-note" hidden></p>
-      <div id="compare-bars" class="bars"></div>
+        <div class="panel-head">
+          <div class="eyebrow" id="history-eyebrow" hidden>Compare</div>
+          <h2 id="compare-title">Predicted risk by group</h2>
+          <p class="muted" id="compare-sub"></p>
+        </div>
+        <p class="caution" id="compare-note" hidden></p>
+        <div id="compare-bars" class="bars"></div>
       </div>
       <section id="shelter-panel" aria-label="Selected sites" hidden>
-
         <div id="shelter-body" aria-live="polite" aria-atomic="true"></div>
       </section>
+      <p class="credits">Map © CARTO, © OpenStreetMap contributors. Residents are synthetic; risk is a trained-model prediction of simulated exposure.</p>
     </aside>
   </main>
-
-  <dialog id="modal" class="modal" aria-label="Simulation information">
-    <button class="close" id="modal-close" aria-label="Close">×</button>
-    <div id="modal-body"></div>
-  </dialog>
 
   <script src="vendor/maplibre-gl.js"></script>
   <script src="vendor/deckgl.min.js"></script>
   <script src="auth.js?v=3"></script>
-  <script src="main.js?v=14"></script>
+  <script src="main.js?v=24"></script>
   <script src="shelters.js?v=4"></script>
-  <script src="ask.js?v=2"></script>
+  <script src="hud.js?v=3"></script>
+  <script src="ask.js?v=3"></script>
 </body>
 </html>

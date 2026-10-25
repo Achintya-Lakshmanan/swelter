@@ -2,16 +2,27 @@
    simulation tables (Tiger Data or local SQLite) only when it needs data (backend/ask.py). Each answer shows the
    queries it ran and their rows. Starts after sign-in (auth.js); government accounts only. */
 (() => {
-  const PRESETS = [
-    "What can you tell me, and how were these residents built?",
-    "Which groups are most at risk on the record heat day compared with a typical hot day?",
-    "At what hour does heat risk peak on the record day, and what are at-risk people doing then?",
-    "Which census tracts have the most residents in danger in this scenario?",
-    "If we open 1, 3 or 5 sites, how much of the predicted risk is within reach?",
-    "Which sites reach the most at-risk residents without cars?",
-    "Compare outdoor workers and office workers in the record winter storm.",
-    "How many older adults living alone are in danger on each winter storm day?",
-  ];
+  // Suggestions follow the hazard picked in the scenario bar (the whole page takes its theme too).
+  const PRESETS = {
+    any: [
+      "What can you tell me, and how were these residents built?",
+      "Which census tracts have the most residents in danger in this scenario?",
+      "If we open 1, 3 or 5 sites, how much of the predicted risk is within reach?",
+    ],
+    heat: [
+      "Which groups are most at risk on the record heat day compared with a typical hot day?",
+      "At what hour does heat risk peak on the record day, and what are at-risk people doing then?",
+      "Which cooling sites reach the most at-risk residents without cars?",
+      "How do outdoor workers compare with office workers on the severe heat day?",
+    ],
+    cold: [
+      "Compare outdoor workers and office workers in the record winter storm.",
+      "How many older adults living alone are in danger on each winter storm day?",
+      "Which warming sites reach the most residents without reliable heat?",
+      "At what hour is cold risk worst on the record winter storm day, and where are people then?",
+    ],
+  };
+  const presetList = () => [...PRESETS[window.swelter?.state.hazard === "cold" ? "cold" : "heat"], ...PRESETS.any];
   const $ = (s, el = document) => el.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const history = [];
@@ -37,6 +48,7 @@
     $("#ask-form").onsubmit = (e) => { e.preventDefault(); send($("#ask-input").value); };
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#ask").hidden && !document.querySelector("dialog[open]")) toggle(false); });
     presets();
+    document.addEventListener("swelter:scenario", presets);
   }
 
   function toggle(open = $("#ask").hidden) {
@@ -48,7 +60,7 @@
   // Before the first question the suggestions are the main content; afterwards a compact row above the input.
   function presets() {
     const asked = new Set(history.map((h) => h.question));
-    const left = PRESETS.filter((p) => !asked.has(p));
+    const left = presetList().filter((p) => !asked.has(p));
     $("#ask-presets").className = history.length ? "ask-presets compact" : "ask-presets";
     $("#ask-presets").innerHTML = (history.length ? "" : `<p class="ask-label">Try one of these</p>`)
       + left.slice(0, history.length ? 3 : 8).map((p) => `<button type="button" class="ask-chip">${esc(p)}</button>`).join("");

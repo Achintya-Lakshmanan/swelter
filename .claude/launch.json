@@ -4,7 +4,24 @@
     {
       "name": "swelter",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "server.py"],
+      "runtimeArgs": [
+        "run",
+        "server.py"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "swelter-dev",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "--env-file",
+        ".env",
+        "server.py"
+      ],
+      "env": {
+        "SWELTER_DEV_LOGIN": "1"
+      },
       "port": 8000
     }
   ]

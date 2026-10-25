@@ -9,11 +9,13 @@ returns a deterministic explanation built from the same facts, labelled as offli
 import json
 import os
 import pathlib
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from functools import lru_cache
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, urlsplit
 
-from backend import api
+from backend import api, ask
 
 ROOT = pathlib.Path(__file__).resolve().parent
 APP = ROOT / "app"
@@ -133,6 +135,42 @@ def has_key():
     return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 
 
+# Gemini writes the resident summary when GEMINI_API_KEY is set (same key as Ask); Claude is the fallback, then the
+# offline text. A slow answer must not stall the inspector: past WHY_TIMEOUT seconds the offline text is returned.
+# Benchmarked Oct 25 (tools/why_latency.py, 12 residents): flash-lite p50 1.25 s / p95 2.9 s; flash p50 9.2 s / p95 24 s
+# with 503s under load, so flash is not used here. One retry covers flash-lite's occasional 403/503.
+WHY_MODELS = [os.environ.get("GEMINI_WHY_MODEL", "gemini-3.5-flash-lite")]
+WHY_TIMEOUT = float(os.environ.get("SWELTER_WHY_TIMEOUT", "8"))
+_why_pool = ThreadPoolExecutor(max_workers=4)
+_why_cache = {}
+
+
+def gemini_explanation(f):
+    slim = {**f, "baseline_day": None}
+    content, model = ask.gemini([{"role": "user", "parts": [{"text": json.dumps(slim)}]}], SYSTEM, models=WHY_MODELS)
+    text = "".join(p.get("text", "") for p in content.get("parts", [])).strip()
+    return text or None, model
+
+
+def explain(f):
+    """→ (text, source, ms). Tries Gemini, then Claude, each under WHY_TIMEOUT; offline text if neither answers."""
+    t0 = time.perf_counter()
+    tries = ([gemini_explanation] * 2 if ask.enabled() else []) + ([lambda f: (llm_explanation(f), MODEL)] if has_key() else [])
+    for fn in tries:
+        left = WHY_TIMEOUT - (time.perf_counter() - t0)
+        if left <= 0:
+            break
+        try:
+            text, source = _why_pool.submit(fn, f).result(timeout=left)
+            if text:
+                return text, source, round((time.perf_counter() - t0) * 1000)
+        except FutureTimeout:
+            print(f"why: {fn.__name__} over {WHY_TIMEOUT:g} s, falling back")
+        except Exception as e:  # never break the demo on an API hiccup
+            print("why failed:", repr(e))
+    return offline_explanation(f), "offline", round((time.perf_counter() - t0) * 1000)
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(APP), **kw)
@@ -193,17 +231,17 @@ class Handler(SimpleHTTPRequestHandler):
             f = facts(str(body["scenario"]), int(body["resident"]))
         except (KeyError, ValueError, IndexError, json.JSONDecodeError) as e:
             return self._json(400, {"error": f"bad request: {e}"})
-        text, source = None, "offline"
-        if has_key():
-            try:
-                text, source = llm_explanation(f), MODEL
-            except Exception as e:  # never break the demo on an API hiccup
-                print("LLM explain failed:", repr(e))
-        if not text:
-            text, source = offline_explanation(f), "offline"
-        return self._json(200, {"text": text, "source": source})
+        key = (str(body["scenario"]), int(body["resident"]))
+        if key in _why_cache and not body.get("fresh"):
+            return self._json(200, {**_why_cache[key], "cached": True})
+        text, source, ms = explain(f)
+        out = {"text": text, "source": source, "ms": ms}
+        if source != "offline":
+            _why_cache[key] = out
+        return self._json(200, out)
 
 
 if __name__ == "__main__":
-    print(f"ChillySOS on http://{HOST}:{PORT}  (live LLM explainer: {'on, ' + MODEL if has_key() else 'off — set ANTHROPIC_API_KEY'})")
+    why = "Gemini " + WHY_MODELS[0] if ask.enabled() else MODEL if has_key() else "off (set GEMINI_API_KEY or ANTHROPIC_API_KEY)"
+    print(f"ChillySOS on http://{HOST}:{PORT}  (resident explainer: {why})")
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

@@ -128,3 +128,12 @@ canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
 
 ## Further sidebar cleanup — Oct 25
 - Removed hourly coverage disclosure/table/note, population-category guidance, historical context paragraph, shelter planning heading/intro and duplicate open-sites action. Standard city hides the empty site section; City response still opens the selected-site list and map markers.
+
+## Simulator restyle — Oct 25 (branch ui-redesign)
+- Merged origin/iphone-app (20k residents, Auth0 gate, Ask, slider fixes) into ui-redesign, then restyled the planner page: black "Instrument" look, Schibsted Grotesk, full-bleed map with a live finding over it (`app/hud.js`), green lower-risk dots, hazard-coloured elevated dots, numbered white site rings, opens at 11 AM (`?t=` overrides), paused under Reduce Motion.
+- Inspector: danger-hours figure, 17-hour strip, live "why" button (`/api/why` with `swelterAuth.headers()`), chips, hour-by-hour and data trace collapsed.
+- Removed Validation, Methods and About from the bar (their modals too). about.html still exists but is unlinked. The redesign landing page was discarded.
+- Slider: fixed-size thumb; spark and tick labels are inset by half the thumb so thumb, playhead and labels match to the pixel.
+- Local testing: `.claude/launch.json` has `swelter-dev` (SWELTER_DEV_LOGIN=1) for the demo government account "jordan".
+- Oct 25 later: theme follows the hazard (`data-hazard` on <html>: warm blacks + crimson for heat, blue-blacks + blue for cold; Ask panel and its suggestions follow). 0.25× playback. "Find residents" filter in the panel (occupation, age, no car / no AC or no reliable heat / lives alone / low income / asthma-COPD) dims non-matching dots and reports matches, danger hours and how many are at elevated risk now.
+- `/api/why` now tries Gemini first (GEMINI_API_KEY, model GEMINI_WHY_MODEL default gemini-3.5-flash-lite), then Claude, under an 8 s budget (SWELTER_WHY_TIMEOUT) before falling back to the offline text; answers are cached per scenario+resident and report their latency. Benchmark (`uv run --env-file .env python tools/why_latency.py`, Oct 25): flash-lite p50 1.25 s / p95 2.9 s, 1 error in 12; flash p50 9.2 s / p95 24 s with 503s, so only flash-lite is used, with one retry. In the running app 12 of 12 clicks answered by Gemini, p50 1.1 s, max 1.8 s; repeat clicks 2 ms from cache.
