@@ -280,3 +280,28 @@ b { font-weight: 600; }
   .foot-links { display: flex; gap: 20px; }
   .wordmark { font-size: 34vw; }
 }
+
+/* Compact editorial companion to the simulator. */
+:root { --section:clamp(48px,7vw,88px); --fs-display:clamp(36px,5vw,68px); --fs-big:clamp(28px,3.5vw,42px); --fs-head:clamp(24px,2.8vw,34px); --fs-lead:16px; --m:clamp(20px,5vw,64px); }
+html { scroll-behavior:auto; }
+.nav { position:relative; border-bottom:1px solid #d7dfe2; }
+.hero { min-height:0; padding-top:48px; gap:32px; }
+.sentence { line-height:1.08; letter-spacing:-.04em; }
+.button { border-radius:4px; min-height:44px; padding:0 20px; font-size:14px; }
+.stack { white-space:normal; font-size:32px; line-height:1.25; }
+.stack p { display:inline; font-size:18px; color:var(--muted); margin-right:10px; }
+.object { transform:none; margin-top:28px; border-radius:3px; }
+.facts { margin-top:28px; font-size:15px; }
+.claim-text h2 { font-weight:600; line-height:1.2; }
+.claim-pic img { border-radius:3px; }
+.rows li { font-size:48px; }
+.rows .cap { max-width:38ch; font-size:15px; }
+.names { font-size:20px; line-height:1.5; color:var(--muted); }
+.ask-sentence { font-size:32px; }
+.ask select,.ask button { min-height:44px; height:auto; font-size:24px; border-radius:3px; }
+.foot { min-height:0; padding:32px var(--m); display:flex; flex-direction:column; gap:28px; }
+.foot-top { width:100%; }
+.foot-invite { font-size:22px; }
+.wordmark { display:none; }
+.js [data-line], .js [data-load], .js [data-open], .js [data-reveal], .js .shutter img, .js .claim-pic img, .js .rows .whole > span, .js .rows .dec > span, .js .rows .cap { animation:none!important; transition:none!important; transform:none!important; clip-path:none!important; opacity:1!important; }
+@media(max-width:720px) { .nav nav { gap:12px; flex-wrap:wrap; } .nav nav a:not(:last-child) { display:block; } .nav { gap:20px; align-items:flex-start; } .sentence { font-size:36px; } .slot { aspect-ratio:3/1; } .hero { padding-top:28px; } .stack { font-size:28px; } .object { margin-top:24px; transform:none; } .facts { margin-top:24px; } .ask-sentence { font-size:28px; } }

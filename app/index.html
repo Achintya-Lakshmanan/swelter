@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b0e13">
   <title>Swelter · Philadelphia</title>
   <link rel="stylesheet" href="vendor/maplibre-gl.css">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 </head>
@@ -16,13 +16,13 @@
       <span class="logo" aria-hidden="true"></span>
       <div>
         <h1 class="brand-name">Swelter</h1>
-        <div class="brand-sub">Philadelphia disaster what-if</div>
+        <div class="brand-sub">Philadelphia · Disaster simulator</div>
       </div>
     </div>
-    <nav class="controls">
-      <div class="seg" id="hazard-seg" role="group" aria-label="Hazard"></div>
-      <div class="seg" id="level-seg" role="group" aria-label="Severity"></div>
-      <div class="seg" id="iv-seg" role="group" aria-label="Intervention"></div>
+    <nav class="controls" aria-label="Scenario">
+      <div class="control-field"><span class="control-label">Hazard</span><div class="seg" id="hazard-seg" role="group" aria-label="Hazard"></div></div>
+      <div class="control-field"><span class="control-label">Severity</span><div class="seg" id="level-seg" role="group" aria-label="Severity"></div></div>
+      <div class="control-field response-field"><span class="control-label">City response</span><div class="seg" id="iv-seg" role="group" aria-label="Intervention"></div></div>
     </nav>
     <div class="top-actions">
       <button class="ghost" id="btn-validate">Validation</button>
@@ -72,21 +72,21 @@
       <p class="caution" id="compare-note" hidden></p>
       <div id="compare-bars" class="bars"></div>
       <div class="kpis" id="kpis"></div>
-      <div class="section-title">Every intervention at this severity</div>
+      <div class="section-title">Compare all responses · hours per person</div>
       <div id="matrix" class="matrix"></div>
-      <button class="feature-btn" id="btn-feature">Show me someone whose day changed</button>
+      <button class="feature-btn" id="btn-feature">Inspect a changed day</button>
       <p class="hint">Click a group to highlight its residents on the map. Click any dot to inspect a resident.</p>
       <div class="history" id="history"></div>
     </aside>
   </main>
 
-  <dialog id="modal" class="modal">
+  <dialog id="modal" class="modal" aria-label="Simulation information">
     <button class="close" id="modal-close" aria-label="Close">×</button>
     <div id="modal-body"></div>
   </dialog>
 
   <script src="vendor/maplibre-gl.js"></script>
   <script src="vendor/deckgl.min.js"></script>
-  <script src="main.js?v=4"></script>
+  <script src="main.js?v=5"></script>
 </body>
 </html>

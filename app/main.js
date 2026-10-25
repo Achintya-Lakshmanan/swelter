@@ -155,7 +155,7 @@
       const b = B[g]?.danger_hours ?? 0, v = G[g]?.danger_hours ?? 0;
       const pct = b > 0 ? Math.round(((v - b) / b) * 100) : 0;
       const delta = isBase ? "" : `<span class="delta ${pct < 0 ? "good" : pct > 0 ? "bad" : ""}">${pct > 0 ? "+" : ""}${pct}%</span>`;
-      return `<div class="bar-row ${state.group === g ? "on" : ""}" data-g="${g}">
+      return `<div class="bar-row ${state.group === g ? "on" : ""}" data-g="${g}" role="button" tabindex="0" aria-pressed="${state.group === g}" aria-label="Highlight ${M.groups[g]}">
         <div class="bar-label"><span>${M.groups[g]} <span class="muted">· ${G[g]?.n ?? 0}</span></span>${delta}</div>
         ${isBase ? "" : `<div class="bar-track"><div class="bar-fill base" style="width:${(b / max) * 100}%"></div></div>`}
         <div class="bar-track"><div class="bar-fill iv" style="width:${(v / max) * 100}%"></div></div>
@@ -165,6 +165,7 @@
     document.querySelectorAll(".bar-row").forEach((el) => el.onclick = () => {
       state.group = state.group === el.dataset.g ? null : el.dataset.g; renderCompare(); redraw();
     });
+    document.querySelectorAll(".bar-row").forEach((el) => { el.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.click(); } }; });
     const a = run.summary.all.all, ab = baseRun.summary.all.all;
     const pctAny = (x) => Math.round(x.share_any_danger * 100);
     $("#kpis").innerHTML = `
@@ -507,7 +508,7 @@
     $("#btn-validate").onclick = showValidation;
     $("#modal-close").onclick = () => $("#modal").close();
     document.addEventListener("keydown", (e) => {
-      if (e.target.tagName === "INPUT" && e.target.type !== "range") return;
+      if (e.defaultPrevented || e.target.closest("button, select, a, [role=button], dialog") || (e.target.tagName === "INPUT" && e.target.type !== "range")) return;
       if (e.code === "Space") { e.preventDefault(); $("#play").click(); }
     });
 

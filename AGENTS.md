@@ -76,3 +76,9 @@ Claude; without it the server answers from the planner's reason codes.
   motion preference explicitly (`scripts/lib/cdp.mjs`); for playwright use `page.emulateMedia({ reducedMotion: 'no-preference' })`.
 - BLS blocks scripted ATUS downloads; do not try to work around it. Download by hand (README).
 - Danger thresholds live in `scripts/swelter/hazards.py` (AQI bands differ for vulnerable residents).
+
+## UI redesign — Oct 24, 2026
+- Presentation updated on branch codex/minimal-ui: neutral dark workspace, teal actions, labeled scenario controls, compact About page, no decorative entrance motion or glass surfaces.
+- Group highlights support Enter/Space; native buttons keep their own Space behavior.
+- Verified all 48 scenario selections, playback controls, resident inspector, Methods/Validation, deep links, About form, and 390px overflow in Chrome. No page errors. Offline explanation function checked in WSL; live Claude and audible speech not verified.
+- APIs, simulation data, routes, and backend unchanged. No commit created.
