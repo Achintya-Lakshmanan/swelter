@@ -14,6 +14,8 @@ final class ResponderData {
     /// A request this responder hasn't seen yet, shown as a pop-up.
     var incoming: HelpRequest?
     private var seen: Set<String> = []
+    /// Replay day and hour of the risk grid on screen; the grid only changes when this does.
+    private var riskKey: String?
 
     var sorted: [HelpRequest] { requests.sorted { ($0.mine == true ? 0 : 1, -$0.urgency) < ($1.mine == true ? 0 : 1, -$1.urgency) } }
 
@@ -27,7 +29,13 @@ final class ResponderData {
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
                 if model.speakUpdates { Task { await model.speak(spoken(r, from: model.origin)) } }
             }
-            risk = try await API.shared.risk(replay: model.replay, hour: model.replay != nil ? model.replayHour : nil)
+            // Re-fetching (and re-drawing ~400 map cells) every 5 s kept Apple Maps busy enough that iOS killed the
+            // app with a watchdog timeout; fetch it again only when the hour or the replay day changes.
+            let key = "\(model.replay ?? "live")|\(model.clockHour)"
+            if key != riskKey || risk == nil {
+                risk = try await API.shared.risk(replay: model.replay, hour: model.replay != nil ? model.replayHour : nil)
+                riskKey = key
+            }
             error = nil
         } catch {
             self.error = error.localizedDescription
@@ -55,6 +63,7 @@ final class ResponderData {
     func reset() {
         requests = []
         risk = nil
+        riskKey = nil
         incoming = nil
         seen = []
     }

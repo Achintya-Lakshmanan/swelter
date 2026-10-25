@@ -131,7 +131,10 @@ struct Me: Decodable {
 }
 
 struct RiskGrid: Decodable {
-    struct Cell: Decodable { let lat: Double; let lon: Double; let danger: Int; let people: Int }
+    struct Cell: Decodable {
+        let lat: Double; let lon: Double; let danger: Int; let people: Int
+        var key: String { "\(lat),\(lon)" }
+    }
     let scenario: String?; let hour: Int?; let simulated: Bool?; let step: Double?; let cells: [Cell]; let unit: String?; let realDay: String?
     let note: String
 }

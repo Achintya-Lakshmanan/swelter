@@ -5,7 +5,11 @@ import SwiftUI
 struct SiteDetail: View {
     @Environment(AppModel.self) private var model
     let site: Site
+    var canReport = false  // volunteers report how busy it is from here
     @State private var walk = WalkTimes.shared
+    @State private var reporting = false
+    @State private var sent: String?
+    @State private var error: String?
 
     var body: some View {
         ScrollView {
@@ -22,6 +26,9 @@ struct SiteDetail: View {
                     Text(site.hoursLine).font(.subheadline.weight(.semibold))
                 }
                 CrowdCard(site: site)
+                if canReport {
+                    PrimaryButton(title: sent.map { "Reported \($0) · thank you" } ?? "Report how busy it is", color: .ink) { reporting = true }
+                }
                 if let h = site.hoursText {
                     Card {
                         Text("Hours").font(.headline)
@@ -46,6 +53,24 @@ struct SiteDetail: View {
         .background(Color.bg)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: model.origin.coordinate.latitude) { walk.request(site, from: model.origin) }
+        .confirmationDialog("How busy is \(site.name)?", isPresented: $reporting, titleVisibility: .visible) {
+            ForEach(["quiet", "busy", "full"], id: \.self) { lv in
+                Button(LevelStyle.of(lv).label) { report(lv) }
+            }
+        }
+        .alert("Couldn't send the report", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {} message: { Text(error ?? "") }
+    }
+
+    private func report(_ level: String) {
+        Task {
+            do {
+                try await API.shared.report(site: site.id, level: level)
+                sent = LevelStyle.of(level).label.lowercased()
+                await model.refresh()
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
     }
 
     private func openMaps() {

@@ -8,6 +8,7 @@ struct DutyMap: View {
     @State private var showRisk = true
     @State private var showSites = true
     @State private var open: HelpRequest?
+    @State private var site: Site?
 
     var body: some View {
         NavigationStack {
@@ -15,15 +16,17 @@ struct DutyMap: View {
                 Map(position: $camera) {
                     UserAnnotation()
                     if showRisk, let g = data.risk, let step = g.step {
-                        ForEach(Array(g.cells.enumerated()), id: \.offset) { _, c in
+                        ForEach(g.cells, id: \.key) { c in  // stable ids: an hour change updates cells instead of rebuilding all
                             MapPolygon(coordinates: square(c, step))
                                 .foregroundStyle(riskColor(c.danger).opacity(0.38))
                         }
                     }
                     if showSites {
                         ForEach(model.relevantSites.filter(\.openNow)) { s in
-                            Annotation(s.name, coordinate: s.coordinate) { SitePin(site: s) }
-                                .annotationTitles(.hidden)
+                            Annotation(s.name, coordinate: s.coordinate) {
+                                Button { site = s } label: { SitePin(site: s) }  // opens how busy it is, hours, report
+                            }
+                            .annotationTitles(.hidden)
                         }
                     }
                     ForEach(data.requests) { r in
@@ -51,6 +54,7 @@ struct DutyMap: View {
             }
             .safeAreaInset(edge: .bottom) { urgentCard }
             .navigationDestination(item: $open) { RequestDetail(request: $0) }
+            .navigationDestination(item: $site) { SiteDetail(site: $0, canReport: true) }
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 camera = .region(MKCoordinateRegion(center: model.origin.coordinate, latitudinalMeters: 4000, longitudinalMeters: 4000))
