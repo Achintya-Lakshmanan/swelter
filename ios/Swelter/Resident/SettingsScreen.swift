@@ -29,7 +29,7 @@ struct SettingsScreen: View {
                     LabeledContent("We send", value: "Which site, in or out, time to 15 min")
                     LabeledContent("We never send", value: "Your location elsewhere, name, phone ID")
                     if model.crowdCounting && model.authStatus != .authorizedAlways {
-                        Text("Crowd counting needs location access set to Always in Settings › Swelter › Location.")
+                        Text("Crowd counting needs location access set to Always in Settings › ChillySOS › Location.")
                             .font(.footnote).foregroundStyle(Color.danger)
                     }
                 } footer: {
@@ -46,7 +46,7 @@ struct SettingsScreen: View {
                 } header: {
                     Text("Replay a record day")
                 } footer: {
-                    Text("Replays a real recorded day's weather (NOAA, EPA) and Swelter's simulated crowds on today's clock, dated this year. Site hours are the city's current posted hours. The simulation covers 6 AM to 10 PM, so overnight there's no crowd forecast or risk layer.")
+                    Text("Replays a real recorded day's weather (NOAA, EPA) and ChillySOS's simulated crowds on today's clock, dated this year. Site hours are the city's current posted hours. The simulation covers 6 AM to 10 PM, so overnight there's no crowd forecast or risk layer.")
                 }
 
                 Section {
@@ -60,7 +60,7 @@ struct SettingsScreen: View {
                 } header: {
                     Text("Voice check-ins")
                 } footer: {
-                    Text("Once an hour while the weather is at danger level or worse (the simulator's bands, stricter for people 65+ or with a medical device), Swelter asks out loud if you're okay. No answer means a volunteer is asked to check on you. Works while the app is open. Voice: \(model.config?.voice == true ? "ElevenLabs" : "this phone's built-in voice").")
+                    Text("Once an hour while the weather is at danger level or worse (the simulator's bands, stricter for people 65+ or with a medical device), ChillySOS asks out loud if you're okay. No answer means a volunteer is asked to check on you. Works while the app is open. Voice: \(model.config?.voice == true ? "ElevenLabs" : "this phone's built-in voice").")
                 }
 
                 Section("Data") {

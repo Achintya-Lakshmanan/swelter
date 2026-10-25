@@ -1,4 +1,4 @@
-# Swelter for iPhone: plan
+# ChillySOS for iPhone: plan
 
 Status: plan, Oct 24 2026 (night). Design mockups live on the design canvas linked from AGENTS.md.
 
@@ -12,7 +12,7 @@ same city on the day itself, for two kinds of people:
 - **Responders** (vetted volunteers and outreach workers) see where people are asking for help, which sites are filling
   up, and where the simulator expects danger to concentrate, then claim a request and close it out.
 
-Phones feed the crowd picture back in, anonymously and only with consent. That closes the loop: plan with Swelter,
+Phones feed the crowd picture back in, anonymously and only with consent. That closes the loop: plan with ChillySOS,
 act with the app, and feed what really happened back into the next simulation.
 
 ## Who uses it
@@ -48,7 +48,7 @@ No account for residents. Nothing about a resident is stored beyond an open help
 Entered with an invite code from a partner organisation (for the hackathon, a code we hand out).
 
 1. **Duty map.** On-duty switch. Open help requests as pins coloured by urgency (waiting time × vulnerability flags),
-   sites coloured by capacity, and a Swelter risk layer: where today's simulated run puts dangerous exposure, by
+   sites coloured by capacity, and a ChillySOS risk layer: where today's simulated run puts dangerous exposure, by
    hour. Filters by need type.
 2. **Request queue.** The same requests as a list, most urgent first: need, people and flags, distance, minutes
    waiting.
@@ -73,9 +73,9 @@ How a site's crowd level is decided, best source first:
 1. A site lead's report (manual, expires after 2 hours).
 2. Phone presence, scaled by app adoption and compared to the site's capacity, shown only as quiet / busy / nearly
    full, and only when at least 5 phones contributed.
-3. Swelter's forecast for today: the simulated arrivals per site per hour on the matching real day. Labelled "usually".
+3. ChillySOS's forecast for today: the simulated arrivals per site per hour on the matching real day. Labelled "usually".
 
-## How it connects to Swelter
+## How it connects to ChillySOS
 
 - Same sites, same hours, same hazard thresholds (`app/data/meta.json`, `scripts/swelter/hazards.py`).
 - The risk layer in responder mode is the simulated dangerous-exposure grid for today's hazard level.
@@ -90,7 +90,7 @@ How a site's crowd level is decided, best source first:
 - **Backend:** extend `server.py` (it already serves the data) with a small JSON API and SQLite.
   `GET /api/sites` (sites + hours + live crowd level), `POST /api/presence`, `POST /api/requests`,
   `GET /api/requests` (responders), `POST /api/requests/{id}/claim|done|release`, `POST /api/sites/{id}/report`,
-  `GET /api/risk?hour=` (Swelter grid).
+  `GET /api/risk?hour=` (ChillySOS grid).
 - **Later:** APNs push for alerts and request status; Tiger Data (Timescale) for the presence time series (sponsor
   prize); hosting on Vultr.
 
@@ -98,7 +98,7 @@ How a site's crowd level is decided, best source first:
 
 Build now:
 
-- Backend endpoints with SQLite, seeded with the 31 sites and Swelter's forecast crowding for the record heat day.
+- Backend endpoints with SQLite, seeded with the 31 sites and ChillySOS's forecast crowding for the record heat day.
 - Resident mode: map, site sheet, get help, request status.
 - Responder mode: invite code, duty map with requests and sites, queue, claim / navigate / done.
 - Demo mode: replay the record heat day with simulated residents standing in for phones (clearly labelled
@@ -114,20 +114,20 @@ review, real responder vetting.
 | Location data from vulnerable people | Opt-in, no coordinates for presence, daily tokens, k-thresholds, nothing kept after a request closes |
 | Someone poses as a volunteer to find vulnerable people | Invite codes from partner orgs, approximate area until claimed, one active claim per responder, every claim logged |
 | People rely on the app instead of 911 | 911 button on every help screen; no promised response time; medical flags show 911 guidance first |
-| Too few users for real crowd counts | Fall back to site-lead reports and Swelter's forecast, always labelled |
+| Too few users for real crowd counts | Fall back to site-lead reports and ChillySOS's forecast, always labelled |
 | Battery | Region monitoring only (no continuous GPS) |
 
 ## Demo script (90 seconds)
 
 1. Resident: the record heat day banner; nearest open site is busy, the next one is quiet; open it, directions.
 2. Resident: "Check on someone": an 81-year-old neighbour with no AC, two blocks away. Send.
-3. Responder: the request appears on the duty map next to the Swelter risk layer; claim it, navigate, mark "moved to
+3. Responder: the request appears on the duty map next to the ChillySOS risk layer; claim it, navigate, mark "moved to
    cooling site".
-4. Back in Swelter: the same site's forecast against what the app recorded.
+4. Back in ChillySOS: the same site's forecast against what the app recorded.
 
 ## Open decisions for the team
 
-- App name (Swelter, or a resident-facing name like "Cool Spots Philly").
+- App name (ChillySOS, or a resident-facing name like "Cool Spots Philly").
 - Which partner organisations would vet responders (for the pitch).
 - Whether residents' help requests need a phone number (callback) or stay fully anonymous.
 - Street density grid: in for the pitch only, or built?

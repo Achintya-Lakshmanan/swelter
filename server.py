@@ -1,4 +1,4 @@
-"""Swelter server: the web demo (static app + /api/why) and the iPhone app's API (backend/api.py).
+"""ChillySOS server: the web demo (static app + /api/why) and the iPhone app's API (backend/api.py).
 
     uv run server.py            # http://localhost:8000
 
@@ -205,5 +205,5 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"Swelter on http://{HOST}:{PORT}  (live LLM explainer: {'on, ' + MODEL if has_key() else 'off — set ANTHROPIC_API_KEY'})")
+    print(f"ChillySOS on http://{HOST}:{PORT}  (live LLM explainer: {'on, ' + MODEL if has_key() else 'off — set ANTHROPIC_API_KEY'})")
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

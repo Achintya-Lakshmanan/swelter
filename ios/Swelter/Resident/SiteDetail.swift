@@ -93,9 +93,9 @@ struct CrowdCard: View {
                 Text("The site lead reported **\(LevelStyle.of(c.level).label.lowercased())** \(c.minutesAgo ?? 0) minutes ago.")
             case "phones":
                 if let cap = site.capacity {
-                    Text("\(c.phonesInside ?? 0) phones with Swelter are inside now. The city lists room for \(cap).")
+                    Text("\(c.phonesInside ?? 0) phones with ChillySOS are inside now. The city lists room for \(cap).")
                 } else {
-                    Text("\(c.phonesInside ?? 0) phones with Swelter are inside now. The city doesn't list this site's capacity, so there's no level.")
+                    Text("\(c.phonesInside ?? 0) phones with ChillySOS are inside now. The city doesn't list this site's capacity, so there's no level.")
                 }
             case "swelter forecast":
                 if let by = c.byHour, let hours = c.hours {
@@ -109,10 +109,10 @@ struct CrowdCard: View {
                     .chartYAxis(.hidden)
                     .frame(height: 110)
                     if !hours.contains(currentHour) {
-                        Text("Swelter simulates \(hourLabel(hours.first ?? 6)) to \(hourLabel(hours.last ?? 22)), so there's no forecast for \(hourLabel(currentHour)).")
+                        Text("ChillySOS simulates \(hourLabel(hours.first ?? 6)) to \(hourLabel(hours.last ?? 22)), so there's no forecast for \(hourLabel(currentHour)).")
                     }
                     if let b = c.busiestHour { Text("Usually busiest around \(hourLabel(b)) on days like this.") }
-                    SourceLine(text: "Swelter simulation of \(c.realDay ?? "a real day on record") with the city's sites open. Synthetic residents, not a head count.")
+                    SourceLine(text: "ChillySOS simulation of \(c.realDay ?? "a real day on record") with the city's sites open. Synthetic residents, not a head count.")
                 }
             default:
                 Text("No one has reported how busy it is. Crowd levels appear when a site lead reports, or when \(model.config?.kMin ?? 5) or more phones with crowd counting have been here.")

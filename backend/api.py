@@ -1,9 +1,9 @@
-"""JSON API for the Swelter iPhone app. Live city/NWS data, what phones report, and the simulator's forecast.
+"""JSON API for the ChillySOS iPhone app. Live city/NWS data, what phones report, and the simulator's forecast.
 
 Public:
   GET  /api/config                      Auth0 settings, demo accounts, which sponsor features are switched on
   GET  /api/live[?replay=heat_extreme&hour=15]
-  GET  /api/sites[?replay=…&hour=…]     city sites + crowd level (site lead > phones, k≥5 > Swelter forecast)
+  GET  /api/sites[?replay=…&hour=…]     city sites + crowd level (site lead > phones, k≥5 > ChillySOS forecast)
   POST /api/presence                    {site_id, event: enter|exit, token}
   POST /api/requests                    {need, flags[], people, lat, lon, callback?, note?} → {id, secret}
                                         (signed in: responders see the resident's first name)
@@ -166,7 +166,7 @@ def post_request(b, u):
     need(nd in store.NEEDS, f"need must be one of {sorted(store.NEEDS)}")
     need(flags <= store.FLAGS, f"flags must be from {sorted(store.FLAGS)}")
     lat, lon = float(b["lat"]), float(b["lon"])
-    need(PHILLY[0] <= lat <= PHILLY[1] and PHILLY[2] <= lon <= PHILLY[3], "Swelter only covers Philadelphia")
+    need(PHILLY[0] <= lat <= PHILLY[1] and PHILLY[2] <= lon <= PHILLY[3], "ChillySOS only covers Philadelphia")
     people = max(1, min(20, int(b.get("people") or 1)))
     cb = (b.get("callback") or "").strip()[:32] or None
     note = (b.get("note") or "").strip()[:280] or None
@@ -267,7 +267,7 @@ def save_profile(u, b):
     if home:
         home = {"name": str(home.get("name") or "")[:120], "lat": float(home["lat"]), "lon": float(home["lon"])}
         need(PHILLY[0] <= home["lat"] <= PHILLY[1] and PHILLY[2] <= home["lon"] <= PHILLY[3],
-             "Swelter only covers Philadelphia")
+             "ChillySOS only covers Philadelphia")
     phone = (b.get("phone") or "").strip()[:32] or None
     return store.save_user(u["sub"], name, home, flags, phone)
 
@@ -304,8 +304,8 @@ def responder(method, p, q, body, user, name):
             return 200, {"cells": [], "note": "No heat, smoke or cold hazard today, so there is no risk forecast."}
         hour = int(q.get("hour") or s["hour"])
         g = forecast.risk_grid(s["scenario"], hour, q.get("iv", "refuge"))
-        note = ("Swelter simulation of the closest real day on record. Synthetic residents, not real people."
-                if g["simulated"] else "Swelter simulates 6 AM to 10 PM, so there is no risk layer at this hour.")
+        note = ("ChillySOS simulation of the closest real day on record. Synthetic residents, not real people."
+                if g["simulated"] else "ChillySOS simulates 6 AM to 10 PM, so there is no risk layer at this hour.")
         return 200, g | {"note": note, "replay": s["replay"]}
     raise HTTPError(404, "not found")
 

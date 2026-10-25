@@ -1,4 +1,4 @@
-/* Swelter front end: replays precomputed runs on a deck.gl map. Only /api/why is live. */
+/* ChillySOS front end: replays precomputed runs on a deck.gl map. Only /api/why is live. */
 (() => {
   const HAZARD_COLOR = { heat: "#f2994a", cold: "#7fc8ff" };
   const LEVEL_RGB = [[47, 143, 122], [242, 201, 76], [242, 153, 74], [235, 77, 91]];

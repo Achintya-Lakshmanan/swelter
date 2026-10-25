@@ -1,11 +1,11 @@
-# Swelter — HackPSU 2026 project handoff
+# ChillySOS — HackPSU 2026 project handoff
 
 Hackathon: HackPSU, Sat Oct 24 2pm → Sun Oct 25 2pm 2026 (State College, PA). Team of 3–5.
 **Start with AGENTS.md** (handoff: state, open work, conventions), then README.md.
 Planning doc (product concept, tracks, datasets, sponsor prizes): https://claude.ai/artifact/6MZbzi8amJxXQnbFcL2QDG
 
 ## What we're building
-**Swelter**: a disaster what-if simulator for **Philadelphia** (pivoted from State College on Oct 24). A planner
+**ChillySOS**: a disaster what-if simulator for **Philadelphia** (pivoted from State College on Oct 24). A planner
 picks a hazard (heatwave / wildfire smoke / flash flood / winter storm), a severity and an intervention; a map
 replays a simulated day of synthetic residents (dots colored by exposure); a compare panel shows exposure by
 group vs. doing nothing; clicking a resident gives a live LLM explanation of why they did what they did.

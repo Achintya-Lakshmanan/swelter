@@ -1,4 +1,4 @@
-# Swelter for iPhone: how to run it, what's real, what's missing
+# ChillySOS for iPhone: how to run it, what's real, what's missing
 
 Everyone signs in with Auth0. Residents see the city's cooling and warming sites with how busy each one is, and can
 ask volunteers for help. Responders get a pop-up when someone asks ("Kayla asked for help"), accept it, navigate
@@ -8,7 +8,7 @@ there and close it out. The plan is in `docs/iphone-app-plan.md`.
 
 ```bash
 SWELTER_DEV_LOGIN=1 uv run --env-file .env server.py   # API + web demo on http://127.0.0.1:8000 (keys from .env)
-cd ios && xcodegen generate && open Swelter.xcodeproj   # run the Swelter scheme on any iPhone simulator
+cd ios && xcodegen generate && open Swelter.xcodeproj   # run the ChillySOS scheme on any iPhone simulator
 ```
 
 The simulator reaches the Mac at 127.0.0.1. For a real phone, run the server with `HOST=0.0.0.0` and build with
@@ -105,9 +105,9 @@ Reset between runs: stop the server, delete `data/swelter.db`, start it again.
 | Sites, hours, open now, water, accessibility, services | City of Philadelphia `Warming_Cooling_Sites_PUBLICVIEW` ArcGIS layer (87 sites) | live, 10 min |
 | Crowd level, 1st choice | A responder's report, shown for 2 h | real people |
 | Crowd level, 2nd choice | Phones with crowd counting on (geofence enter/exit, 15-min buckets, daily random token, shown only once 5+ phones counted) | real phones |
-| Crowd level, 3rd choice | Swelter simulation of the closest real day on record, relative to the site's own busiest hour ("Quiet / Busy / Peak hour"), labelled simulated | simulation |
+| Crowd level, 3rd choice | ChillySOS simulation of the closest real day on record, relative to the site's own busiest hour ("Quiet / Busy / Peak hour"), labelled simulated | simulation |
 | Walk times, addresses | Apple Maps (MapKit ETA, reverse geocoding) | live |
-| Responder risk layer | Swelter simulation: simulated residents at danger level or worse per ~350 m cell, labelled synthetic | simulation |
+| Responder risk layer | ChillySOS simulation: simulated residents at danger level or worse per ~350 m cell, labelled synthetic | simulation |
 | Replay conditions | NOAA ISD hourly at PHL; EPA AQS PM2.5 NowCast for smoke; every hour of the record day (`scripts/replay_hours.py`) | recorded |
 | Help requests, claims, outcomes | What residents and responders do in the app; nothing is seeded | real people |
 
@@ -138,7 +138,7 @@ Reset between runs: stop the server, delete `data/swelter.db`, start it again.
 | **Tiger Data** (Timescale) | Presence pings, requests and site reports in Postgres (`presence` a hypertable), and the simulation tables the Ask chat queries (schema `sim`, `resident_hours` a hypertable) | Set `DATABASE_URL` to the Tiger Cloud connection string and run with `--extra tiger`. Unset = SQLite at `data/swelter.db` and `data/simulation.db` |
 | **ElevenLabs** | Spoken hourly check-ins, request updates, "Listen" on alerts and on the web "Why?" explainer; audio cached in `data/tts/` | `ELEVENLABS_API_KEY` (optional `ELEVENLABS_VOICE_ID`) |
 | **Gemini** | The planner page's Ask chat: question → one read-only SQL query over the simulation tables → answer with its SQL and rows (`backend/ask.py`) | `GEMINI_API_KEY` (optional `GEMINI_SQL_MODEL`, default `gemini-3.5-flash`) |
-| **Vultr** | Hosting the planner page and the phone API over HTTPS (Caddy, Let's Encrypt) | On a fresh Ubuntu 24.04 instance with the `~/.ssh/swelter_vultr` key: `deploy/vultr.sh <IP>` → `https://<ip-with-dashes>.sslip.io/`. Then add that URL to the Auth0 planner app's callback, logout and web-origin lists. (A `Dockerfile` is also there, untested) |
+| **Vultr** | Hosting the planner page and the phone API over HTTPS (Caddy, Let's Encrypt) | On a fresh Ubuntu 24.04 instance with the `~/.ssh/swelter_vultr` key: `deploy/vultr.sh <IP> chillysos.us` → `https://chillysos.us/` (and `https://<ip-with-dashes>.sslip.io/`). Then add those URLs to the Auth0 planner app's callback, logout and web-origin lists. (A `Dockerfile` is also there, untested) |
 | **GoDaddy** | Domain for the API and demo | Point an A record (e.g. `api.<domain>`) at the Vultr IP; put TLS in front (Caddy or Vultr load balancer), then set `SWELTER_API_BASE=https://api.<domain>` in `ios/project.yml` |
 | **Claude** | The web demo's "Why?" explainer (unchanged) | `ANTHROPIC_API_KEY` |
 

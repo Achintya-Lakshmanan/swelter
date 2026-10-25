@@ -1,4 +1,4 @@
-# Agent handoff: Swelter
+# Agent handoff: ChillySOS
 
 Read this first, then `README.md` (how to run, the data pipeline, which file does what) and `CLAUDE.md` (product
 brief and design rules). This file is the current state and the open work; keep it up to date when you finish
@@ -9,7 +9,7 @@ the demo video and slides).
 
 ## What it is, in one paragraph
 
-Swelter is a disaster what-if simulator for Philadelphia. A planner picks a hazard (heatwave, wildfire smoke, flash
+ChillySOS is a disaster what-if simulator for Philadelphia. A planner picks a hazard (heatwave, wildfire smoke, flash
 flood, winter storm), a severity (each one a real day on record) and a city response. The map replays that day
 (6 AM–10 PM) for 20,000 synthetic residents built from Census tracts and real time-use diaries, coloured by exposure.
 A compare panel shows dangerous hours per group against doing nothing; clicking a resident shows their day and a
@@ -68,7 +68,7 @@ canvas https://claude.ai/artifact/9wK7K5wgAtZ5E75buTAu7m (private).
 2. **Live "why" with a key**: check `/api/why` answers with Claude and stays grounded in the resident's facts.
 3. **Research track export**: CSV of a run (one row per resident per hour) plus a short methods note download.
    Not built yet.
-4. **Sponsor keys**: Auth0 (tenant dev-ml8dvjy6kigpgvxb), Tiger Data, Gemini, ElevenLabs and Vultr are live. **Live server: https://144-202-2-216.sslip.io/** (Vultr vc2-1c-2gb, New York, $10/mo; `deploy/vultr.sh 144.202.2.216` pushes new code; the URL is in the Auth0 planner app; the phone build points at it via `SWELTER_API_BASE`). GoDaddy is still open: point an A record at the IP and pass that name to `deploy/vultr.sh`.
+4. **Sponsor keys**: Auth0 (tenant dev-ml8dvjy6kigpgvxb), Tiger Data, Gemini, ElevenLabs and Vultr are live. **Live server: https://chillysos.us/** (also https://144-202-2-216.sslip.io/) (Vultr vc2-1c-2gb, New York, $10/mo; `deploy/vultr.sh 144.202.2.216` pushes new code; the URL is in the Auth0 planner app; the phone build points at it via `SWELTER_API_BASE`). GoDaddy is still open: point an A record at the IP and pass that name to `deploy/vultr.sh`.
 5. **Demo**: 2-minute video and slides; demo opens on the map, record heat day, then "Show me someone whose day
    changed".
 6. `image-to-code` skill is installed but needs an image-generation tool, so it was not used.

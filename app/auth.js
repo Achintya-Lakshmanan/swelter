@@ -70,8 +70,8 @@
     const who = user ? `${esc(user.name || user.profile?.name || "This account")} · ${ROLE[user.role] || user.role}` : "";
     el.innerHTML = `<div class="gate-card" role="dialog" aria-labelledby="gate-title">
       <span class="logo" aria-hidden="true"></span>
-      <h2 id="gate-title">Swelter planner</h2>
-      <p class="muted">For city emergency planners. Residents and volunteers use the Swelter iPhone app.</p>
+      <h2 id="gate-title">ChillySOS planner</h2>
+      <p class="muted">For city emergency planners. Residents and volunteers use the ChillySOS iPhone app.</p>
       ${user ? `<p class="gate-msg">Signed in as <b>${who}</b>. This page is for government accounts; open the iPhone app instead.</p>
         <button class="gate-btn" id="gate-out">Sign out</button>` : `
         ${webAuth0() ? `<button class="gate-btn" id="gate-auth0">Sign in with Auth0</button>`
@@ -100,7 +100,7 @@
     headers, signOut,
     ready: new Promise((resolve) => {
       (async () => {
-        try { cfg = await fetch("api/config").then((r) => r.json()); } catch (e) { return gate({ error: "Can't reach the Swelter server." }); }
+        try { cfg = await fetch("api/config").then((r) => r.json()); } catch (e) { return gate({ error: "Can't reach the ChillySOS server." }); }
         const q = new URLSearchParams(location.search);
         if (q.has("state") && (q.has("code") || q.has("error"))) {
           try { await finishLogin(q); } catch (e) { return gate({ error: e.message }); }

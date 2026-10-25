@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Swelter</string>
+	<string>ChillySOS</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -37,11 +37,11 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Swelter connects to its server on this network during development.</string>
+	<string>ChillySOS connects to its server on this network during development.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>If you turn on crowd counting, Swelter notes when your phone enters or leaves a city cooling or warming site, so everyone can see which ones have room. Nothing else about your location is sent.</string>
+	<string>If you turn on crowd counting, ChillySOS notes when your phone enters or leaves a city cooling or warming site, so everyone can see which ones have room. Nothing else about your location is sent.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Swelter uses your location to show the nearest open cooling and warming sites, and to tell a volunteer where you are when you ask for help.</string>
+	<string>ChillySOS uses your location to show the nearest open cooling and warming sites, and to tell a volunteer where you are when you ask for help.</string>
 	<key>SwelterAPIBase</key>
 	<string>$(SWELTER_API_BASE)</string>
 	<key>UILaunchScreen</key>

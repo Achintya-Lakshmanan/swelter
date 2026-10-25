@@ -82,7 +82,7 @@ struct CheckInSheet: View {
                 }
                 if let error { Text(error).foregroundStyle(Color.danger).font(.subheadline) }
                 Call911()
-                SourceLine(text: "Swelter checks in every hour while the weather is at danger level or worse. Turn it off in Settings.")
+                SourceLine(text: "ChillySOS checks in every hour while the weather is at danger level or worse. Turn it off in Settings.")
             }
             .padding(16)
         }

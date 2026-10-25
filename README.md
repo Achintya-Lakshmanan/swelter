@@ -1,5 +1,5 @@
 <!-- Current UI scope: heat/cold, two responses, ML predictions and site-access metrics. The data-pipeline sections below also document retained training archives. -->
-# Swelter — Philadelphia disaster what-if simulator
+# ChillySOS — Philadelphia disaster what-if simulator
 
 Pick Heatwave or Winter storm, a severity, and one of two responses: Standard city or Open cooling/warming sites. The map
 replays a real day (6am–10pm) for 20,000 synthetic Philadelphians, colored by exposure. The app uses two trained random forests for risk predictions and model-driven shelter priorities. Compare predicted risk-hours, site coverage and uncovered risk by group and hour. Click a resident for their persona, baseline routine and a model-grounded explanation.

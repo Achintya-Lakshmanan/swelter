@@ -13,7 +13,7 @@ struct SignInScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Swelter").font(.system(size: 44, weight: .bold)).foregroundStyle(Color.ink)
+                    Text("ChillySOS").font(.system(size: 44, weight: .bold)).foregroundStyle(Color.ink)
                     Text("Cooling and warming sites in Philadelphia, how busy they are, and neighbours who can come help.")
                         .foregroundStyle(Color.muted)
                 }
@@ -48,12 +48,12 @@ struct SignInScreen: View {
                             .background(.white, in: RoundedRectangle(cornerRadius: 16))
                         }
                     }
-                    SourceLine(text: "Kayla is resident #1484 in Swelter's simulation. Demo accounts are on only while the server runs with SWELTER_DEV_LOGIN=1.")
+                    SourceLine(text: "Kayla is resident #1484 in ChillySOS's simulation. Demo accounts are on only while the server runs with SWELTER_DEV_LOGIN=1.")
                 }
 
                 if model.config == nil {
                     if let e = model.loadError {
-                        Text("Can't reach the Swelter server: \(e)").foregroundStyle(Color.danger)
+                        Text("Can't reach the ChillySOS server: \(e)").foregroundStyle(Color.danger)
                         Button("Try again") { Task { await model.refresh() } }
                     } else {
                         ProgressView()
@@ -99,7 +99,7 @@ struct GovernmentNotice: View {
         VStack(alignment: .leading, spacing: 16) {
             Image(systemName: "building.columns.fill").font(.largeTitle).foregroundStyle(Color.action)
             Text("Use the planner on the web").font(.largeTitle.bold())
-            Text("\(model.account?.name ?? "This account") is a government account. Government accounts use the Swelter planner in a browser; this app is for residents and volunteers.")
+            Text("\(model.account?.name ?? "This account") is a government account. Government accounts use the ChillySOS planner in a browser; this app is for residents and volunteers.")
             Link(destination: API.shared.base) {
                 Label(API.shared.base.absoluteString, systemImage: "safari").font(.headline)
             }
@@ -169,7 +169,7 @@ struct ProfileSetup: View {
             error = "Couldn't find that address."
             return
         }
-        guard inPhilly(c) else { error = "Swelter only covers Philadelphia."; return }
+        guard inPhilly(c) else { error = "ChillySOS only covers Philadelphia."; return }
         error = nil
         home = .init(name: [p.subThoroughfare, p.thoroughfare].compactMap { $0 }.joined(separator: " "), lat: c.latitude, lon: c.longitude)
     }

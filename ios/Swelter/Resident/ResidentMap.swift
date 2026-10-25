@@ -120,7 +120,7 @@ struct HazardCard: View {
             }
             .buttonStyle(.plain)
         } else if let e = model.loadError {
-            Text("Can't reach Swelter: \(e)").font(.footnote).padding(12)
+            Text("Can't reach ChillySOS: \(e)").font(.footnote).padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.white, in: RoundedRectangle(cornerRadius: 14))
         }

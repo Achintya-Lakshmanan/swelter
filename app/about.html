@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Swelter · Heat and cold shelter planning</title>
+  <title>ChillySOS · Heat and cold shelter planning</title>
   <meta name="description" content="Compare standard-city access with ML-selected cooling and warming sites for synthetic Philadelphia residents.">
   <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="about.css?v=11">
 </head>
 <body>
-  <header class="nav"><a class="mark" href="/">Swelter</a><nav aria-label="Page"><a href="#models">Models</a><a href="#data">Data</a><a href="/">Live map</a></nav></header>
+  <header class="nav"><a class="mark" href="/">ChillySOS</a><nav aria-label="Page"><a href="#models">Models</a><a href="#data">Data</a><a href="/">Live map</a></nav></header>
   <main class="about-planning">
     <section class="about-lead"><h1>Put shelter access<br>where the risk is.</h1><p>Explore heatwave and winter-storm exposure for synthetic Philadelphia residents. Compare Standard city with cooling or warming sites selected using trained-model predictions.</p><a class="button" href="/?hazard=heat&amp;iv=refuge">Explore cooling sites</a></section>
     <section id="models"><h2>Two hazards. Two trained models.</h2><div class="about-columns"><article><h3>Heatwave</h3><p>Prioritize real cooling facilities near predicted exposure, especially residents without AC or a car.</p><p id="heat-quality">Loading model evaluation…</p><a href="/?hazard=heat&amp;iv=refuge">Open heatwave planning</a></article><article><h3>Winter storm</h3><p>Prioritize real warming facilities near residents who are unhoused or lack reliable heat.</p><p id="cold-quality">Loading model evaluation…</p><a href="/?hazard=cold&amp;iv=refuge">Open winter planning</a></article></div></section>
@@ -16,6 +16,6 @@
     <section id="data"><h2>Real inputs. Synthetic residents.</h2><p>City cooling/warming site records and opening hours, NOAA weather and city heat maps provide the physical context. Census ACS, EIA RECS, CDC PLACES and ATUS inform residents and their routines.</p><p>Two random forests learn simulated dangerous-exposure labels. They are not trained on observed shelter or health outcomes. Each model uses 79,560 resident-hour examples across three historical weather days. Unhoused residents are oversampled and their schedules are assumed; counts are not Philadelphia population estimates.</p><p>The typical winter-day unseen-weather test did not beat a constant-risk baseline. The app discloses this limitation alongside the model's other held-out results.</p><a href="data/shelter_models.json" download>Download model report</a></section>
     <section><h2>Explore a scenario</h2><form action="/" method="get" class="about-form"><label for="ask-hazard">Hazard</label><select id="ask-hazard" name="hazard"><option value="heat">Heatwave</option><option value="cold">Winter storm</option></select><input type="hidden" name="iv" value="refuge"><button class="button" type="submit">Open model-selected sites</button></form></section>
   </main>
-  <footer class="foot"><p>Swelter · Built at HackPSU 2026</p><a href="/">Live map</a><p class="foot-credits">Map tiles © CARTO, data © OpenStreetMap contributors.</p></footer>
+  <footer class="foot"><p>ChillySOS · Built at HackPSU 2026</p><a href="/">Live map</a><p class="foot-credits">Map tiles © CARTO, data © OpenStreetMap contributors.</p></footer>
   <script src="about.js?v=6"></script>
 </body></html>

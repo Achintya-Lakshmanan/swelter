@@ -24,15 +24,15 @@ targets:
     info:
       path: Swelter/Info.plist
       properties:
-        CFBundleDisplayName: Swelter
+        CFBundleDisplayName: ChillySOS
         SwelterAPIBase: $(SWELTER_API_BASE)
         UILaunchScreen: {}
         # The palette in Theme.swift is light-only; without this, dark-mode phones get white text on white cards.
         UIUserInterfaceStyle: Light
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        NSLocationWhenInUseUsageDescription: Swelter uses your location to show the nearest open cooling and warming sites, and to tell a volunteer where you are when you ask for help.
-        NSLocationAlwaysAndWhenInUseUsageDescription: If you turn on crowd counting, Swelter notes when your phone enters or leaves a city cooling or warming site, so everyone can see which ones have room. Nothing else about your location is sent.
-        NSLocalNetworkUsageDescription: Swelter connects to its server on this network during development.
+        NSLocationWhenInUseUsageDescription: ChillySOS uses your location to show the nearest open cooling and warming sites, and to tell a volunteer where you are when you ask for help.
+        NSLocationAlwaysAndWhenInUseUsageDescription: If you turn on crowd counting, ChillySOS notes when your phone enters or leaves a city cooling or warming site, so everyone can see which ones have room. Nothing else about your location is sent.
+        NSLocalNetworkUsageDescription: ChillySOS connects to its server on this network during development.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         CFBundleURLTypes:

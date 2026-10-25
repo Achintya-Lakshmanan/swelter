@@ -63,7 +63,7 @@ struct Crowd: Decodable {
         switch source {
         case "site lead": "Site lead, \(minutesAgo ?? 0) min ago"
         case "phones": "\(phones4h ?? 0) phones in the last 4 hours"
-        case "swelter forecast": "Swelter forecast (simulated, \(realDay ?? "a real day"))"
+        case "swelter forecast": "ChillySOS forecast (simulated, \(realDay ?? "a real day"))"
         default: "No reports yet"
         }
     }

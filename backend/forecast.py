@@ -66,7 +66,7 @@ def site_forecast(scenario, site_name):
     return {"hours": meta()["hours"], "people": counts, "scenario": f"{scenario}_refuge",
             "real_day": meta()["hazards"][rn["hazard"]]["levels"][rn["level"]]["label"].split(" — ")[-1],
             "residents_simulated": len(meta()["residents"]),
-            "source": f"Swelter simulation ({len(meta()['residents']):,} synthetic residents)"}
+            "source": f"ChillySOS simulation ({len(meta()['residents']):,} synthetic residents)"}
 
 
 def risk_grid(scenario, hour, iv="none"):

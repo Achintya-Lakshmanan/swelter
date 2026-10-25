@@ -1,6 +1,6 @@
 # Auth0 setup: three kinds of account
 
-Swelter has one Auth0 tenant, one API and two applications. The server reads each person's role from their access
+ChillySOS has one Auth0 tenant, one API and two applications. The server reads each person's role from their access
 token (`backend/auth.py`):
 
 | Account | Auth0 permission (on the API) | Where they sign in | What they get |
@@ -24,7 +24,7 @@ Sign up at [auth0.com](https://auth0.com) (the free plan is enough) and create a
 
 Applications › APIs › **Create API**.
 
-- Name `Swelter API`, identifier `https://api.swelter.app`, signing algorithm RS256.
+- Name `ChillySOS API`, identifier `https://api.swelter.app`, signing algorithm RS256.
 - **Settings** tab, RBAC settings: turn on **Enable RBAC** and **Add Permissions in the Access Token**. Save.
 - **Permissions** tab: add `respond:requests` ("Answer help requests") and `view:planner` ("Use the planner page").
 
@@ -32,12 +32,12 @@ Applications › APIs › **Create API**.
 
 Applications › Applications › **Create Application**, twice.
 
-**Swelter iPhone** (type: Native)
+**ChillySOS iPhone** (type: Native)
 - Allowed Callback URLs and Allowed Logout URLs:
   `app.swelter.Swelter://YOUR_DOMAIN/ios/app.swelter.Swelter/callback`
 - Copy the Client ID.
 
-**Swelter planner** (type: Single Page Application)
+**ChillySOS planner** (type: Single Page Application)
 - Allowed Callback URLs and Allowed Logout URLs: `http://localhost:8000/, http://127.0.0.1:8000/`
 - Allowed Web Origins: `http://localhost:8000, http://127.0.0.1:8000`
 - Add your `https://` address too if you deploy (Vultr + a GoDaddy domain). Browsers only allow the sign-in code
@@ -51,8 +51,8 @@ User Access) settings and allow both applications.
 ## 4. Roles and the three users
 
 User Management › Roles › **Create Role**:
-- `Volunteer`, with permission `respond:requests` from Swelter API
-- `Government`, with permission `view:planner` from Swelter API
+- `Volunteer`, with permission `respond:requests` from ChillySOS API
+- `Government`, with permission `view:planner` from ChillySOS API
 
 User Management › Users › **Create User** (connection Username-Password-Authentication), three times, with
 addresses and passwords you choose:
@@ -80,8 +80,8 @@ With the email in the token you can also grant roles by list instead of RBAC: `S
 
 ```
 AUTH0_DOMAIN=swelter.us.auth0.com
-AUTH0_CLIENT_ID=<Swelter iPhone client ID>
-AUTH0_WEB_CLIENT_ID=<Swelter planner client ID>
+AUTH0_CLIENT_ID=<ChillySOS iPhone client ID>
+AUTH0_WEB_CLIENT_ID=<ChillySOS planner client ID>
 AUTH0_AUDIENCE=https://api.swelter.app
 ```
 

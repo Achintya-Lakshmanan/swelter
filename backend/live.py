@@ -9,7 +9,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("America/New_York")
-UA = "Swelter/0.1 (HackPSU 2026; achucod03@gmail.com)"
+UA = "ChillySOS/0.1 (HackPSU 2026; achucod03@gmail.com)"
 CITY_HALL = (39.9526, -75.1652)
 SITES_URL = ("https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services/"
              "Warming_Cooling_Sites_PUBLICVIEW/FeatureServer/0/query")

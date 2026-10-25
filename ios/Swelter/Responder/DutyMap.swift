@@ -63,8 +63,8 @@ struct DutyMap: View {
     }
 
     private var riskLabel: String {
-        guard let g = data.risk, let h = g.hour else { return "Swelter risk" }
-        return g.simulated == false ? "Swelter risk · none at \(hourLabel(h))" : "Swelter risk · \(hourLabel(h))"
+        guard let g = data.risk, let h = g.hour else { return "ChillySOS risk" }
+        return g.simulated == false ? "ChillySOS risk · none at \(hourLabel(h))" : "ChillySOS risk · \(hourLabel(h))"
     }
 
     @ViewBuilder private var urgentCard: some View {

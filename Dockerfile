@@ -1,4 +1,4 @@
-# Swelter server for Vultr (or any Docker host): web demo + iPhone app API.
+# ChillySOS server for Vultr (or any Docker host): web demo + iPhone app API.
 #   docker build -t swelter . && docker run -p 8000:8000 --env-file .env swelter
 FROM python:3.13-slim
 COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /bin/uv
