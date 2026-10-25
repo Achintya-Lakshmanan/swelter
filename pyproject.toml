@@ -7,6 +7,7 @@ dependencies = ["anthropic>=1.0", "pyjwt[crypto]>=2.8"]
 
 [project.optional-dependencies]
 tiger = ["psycopg[binary]>=3.2"]  # Tiger Data / Timescale Cloud via DATABASE_URL
+ml = ["scikit-learn==1.6.1"]
 
 [tool.uv]
 package = false

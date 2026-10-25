@@ -13,3 +13,4 @@ ios/build/
 ios/build-device/
 ios/*.xcodeproj/
 ios/Swelter/Config.xcconfig
+.venv-ml/
