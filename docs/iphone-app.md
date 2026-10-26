@@ -45,7 +45,7 @@ forecast this hour" and the responder risk layer is empty with a note, instead o
     retired, Fairhill (census tract 175), lives alone, no AC, home at Warnock Village. In the simulation she never
     hears the warning and spends 9 AM to 10 PM at extreme danger at home (119 °F heat index at 3 PM).
   - **Marisol Rivera**, responder. A made-up volunteer, no real organisation.
-  - **Jordan Ellis**, government (planner web page only). Made up.
+  - **Demo**, government (planner web page only: the "Try the demo" button).
 
 ## Voice (ElevenLabs)
 

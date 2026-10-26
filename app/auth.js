@@ -76,7 +76,7 @@
         <button class="gate-btn" id="gate-out">Sign out</button>` : `
         ${webAuth0() ? `<button class="gate-btn" id="gate-auth0">Sign in with Auth0</button>`
           : `<p class="gate-msg">Auth0 isn't set up on this server (AUTH0_DOMAIN and AUTH0_WEB_CLIENT_ID in .env).</p>`}
-        ${demos.map((d) => `<button class="gate-demo" data-id="${esc(d.id)}"><b>Try the demo</b><span>${esc(d.name)} · ${esc(d.about)}</span></button>`).join("")}`}
+        ${demos.map((d) => `<button class="gate-demo" data-id="${esc(d.id)}"><b>Try the demo</b><span>${esc(d.about)}</span></button>`).join("")}`}
       ${error ? `<p class="gate-err">${esc(error)}</p>` : ""}
     </div>`;
     el.querySelector("#gate-auth0")?.addEventListener("click", login);

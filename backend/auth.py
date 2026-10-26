@@ -31,12 +31,12 @@ RESPONDERS, GOVERNMENT = _emails("SWELTER_RESPONDERS"), _emails("SWELTER_GOVERNM
 DEV = os.environ.get("SWELTER_DEV_LOGIN") == "1"
 CLAIMS = "https://swelter.app/"  # namespace for custom claims an Auth0 Action may add (name, email, roles)
 
-# Kayla is the simulator's resident #1484 (backend/forecast.demo_resident); Marisol Rivera and Jordan Ellis are
-# made up.
+# Kayla is the simulator's resident #1484 (backend/forecast.demo_resident); Marisol Rivera is made up. "demo" is the
+# planner page's government account.
 DEMO_ACCOUNTS = {
     "kayla": {"role": "resident", "name": "Kayla", "about": "Resident · Fairhill, North Philadelphia"},
     "marisol": {"role": "responder", "name": "Marisol Rivera", "about": "Responder · volunteer"},
-    "jordan": {"role": "government", "name": "Jordan Ellis", "about": "Government · city emergency planner"},
+    "demo": {"role": "government", "name": "Demo", "about": "Government · city emergency planner"},
 }
 _jwks = None
 

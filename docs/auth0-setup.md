@@ -90,7 +90,7 @@ HOST=0.0.0.0 SWELTER_DEV_LOGIN=1 uv run --env-file .env server.py
 ```
 
 Keep `SWELTER_DEV_LOGIN=1` for the demo if you want the demo accounts as a backup (Kayla and Marisol on the phone,
-Jordan Ellis on the web page); drop it to show only Auth0.
+the "Try the demo" button on the web page); drop it to show only Auth0.
 
 ## Check
 
