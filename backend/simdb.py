@@ -173,11 +173,11 @@ def ensure():
 # ---------- read-only questions ----------
 
 def _conn():
-    if getattr(_conn, "cache", None) is None:
+    if getattr(_conn, "cache", None) is None or PG and _conn.cache.closed:  # reopen one the server closed
         if PG:
             import psycopg
 
-            _conn.cache = psycopg.connect(URL, autocommit=True)
+            _conn.cache = psycopg.connect(URL, autocommit=True, keepalives=1, keepalives_idle=60)
         else:
             c = sqlite3.connect(f"file:{SQLITE}?mode=ro", uri=True, check_same_thread=False)
             c.execute("PRAGMA query_only = ON")

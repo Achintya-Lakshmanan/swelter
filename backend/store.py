@@ -15,6 +15,8 @@ URL = os.environ.get("DATABASE_URL", "")
 PG = URL.startswith("postgres")
 DB_PATH = pathlib.Path(__file__).resolve().parent.parent / "data" / "swelter.db"
 _lock = threading.Lock()
+# TCP keepalives so an idle connection isn't silently dropped by the network between requests.
+PG_OPTS = dict(autocommit=True, keepalives=1, keepalives_idle=60, keepalives_interval=15, keepalives_count=4)
 
 SCHEMA = [
     """CREATE TABLE IF NOT EXISTS presence (
@@ -39,7 +41,7 @@ class DB:
         if PG:
             import psycopg  # only needed for Tiger Data
 
-            self.conn = psycopg.connect(URL, autocommit=True)
+            self.conn = psycopg.connect(URL, **PG_OPTS)
             self.kind = "timescale"
         else:
             DB_PATH.parent.mkdir(exist_ok=True)
@@ -65,11 +67,23 @@ class DB:
         if PG:
             sql = sql.replace("?", "%s")
         with _lock:
-            cur = self.conn.cursor()
-            cur.execute(sql, args)
             if not PG:
+                cur = self.conn.cursor()
+                cur.execute(sql, args)
                 self.conn.commit()
-            return cur
+                return cur
+            import psycopg
+
+            for attempt in (0, 1):  # Tiger Data closes connections now and then: reconnect once and retry
+                if self.conn.closed:
+                    self.conn = psycopg.connect(URL, **PG_OPTS)
+                try:
+                    cur = self.conn.cursor()
+                    cur.execute(sql, args)
+                    return cur
+                except psycopg.OperationalError:
+                    if attempt or not self.conn.closed:
+                        raise
 
     def rows(self, sql, args=()):
         cur = self.run(sql, args)
